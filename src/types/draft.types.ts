@@ -1,0 +1,100 @@
+export interface ClientMetadata {
+  name: string;
+  country: string;
+  city: string;
+  industry: string;
+}
+
+export interface ConversationEntry {
+  timestamp: string;
+  user_message: string;
+  ai_response: string;
+}
+
+export interface TOCSubtopic {
+  subtopic_id: string;
+  topic: string;
+  order: number;
+  source_subtopic_id?: string;
+  content: string;
+  summary: string;
+  conversation_history: ConversationEntry[];
+}
+
+export interface TOCTopic {
+  topic_id: string;
+  topic: string;
+  order: number;
+  source_topic_id?: string;
+  content: string;
+  summary: string;
+  conversation_history: ConversationEntry[];
+  subtopics: TOCSubtopic[];
+}
+
+export interface DraftMetadata {
+  title: string;
+  description: string;
+  created_by: string;
+  created_at: string;
+  modified_at: string;
+  client_metadata: ClientMetadata;
+  most_similar_policy_id?: string;
+}
+
+export interface Draft {
+  id: string;
+  metadata: DraftMetadata;
+  toc: TOCTopic[];
+}
+
+export interface DraftSummary {
+  draft_id: string;
+  title: string;
+  description: string;
+  created_by: string;
+  created_at: string;
+  modified_at: string;
+  most_similar_policy_id?: string;
+  client_metadata?: ClientMetadata;
+}
+
+export interface CreateDraftRequest {
+  title: string;
+  description: string;
+  client_metadata: ClientMetadata;
+}
+
+export interface UpdateTOCRequest {
+  toc: TOCUpdateItem[];
+}
+
+export interface TOCUpdateItem {
+  id: string;
+  topic: string;
+  order: number;
+  source_topic_id?: string;
+  source_subtopic_id?: string;
+  subtopics?: TOCUpdateItem[];
+}
+
+export interface GenerateContentRequest {
+  user_prompt: string;
+  subtopic_id?: string;
+}
+
+export interface ContentGenerationResponse {
+  content: string;
+  sources_used: string[];
+  summary: string;
+  word_count: number;
+  message: string;
+  is_chat_response?: boolean;
+}
+
+export interface DraftProgress {
+  total: number;
+  completed: number;
+  percentage: number;
+  remaining: number;
+}
