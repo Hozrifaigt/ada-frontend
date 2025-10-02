@@ -46,7 +46,7 @@ const DraftsPage: React.FC = () => {
     setError(null);
     try {
       const response = await draftService.getDrafts();
-      setDrafts(response.drafts);
+      setDrafts(response?.drafts || []);
     } catch (err) {
       setError('Failed to load drafts. Please try again.');
       console.error('Error loading drafts:', err);

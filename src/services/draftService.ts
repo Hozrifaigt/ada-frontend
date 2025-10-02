@@ -59,8 +59,14 @@ export const draftService = {
   },
 
   async getDrafts(): Promise<{ drafts: DraftSummary[]; total: number }> {
-    const response = await apiClient.get('/api/v1/drafts/');
-    return response.data;
+    try {
+      const response = await apiClient.get('/api/v1/drafts/');
+      return response.data || { drafts: [], total: 0 };
+    } catch (error) {
+      console.error('Error fetching drafts:', error);
+      // Return empty array instead of throwing to prevent app crashes
+      return { drafts: [], total: 0 };
+    }
   },
 
   async getDraft(id: string): Promise<Draft> {
