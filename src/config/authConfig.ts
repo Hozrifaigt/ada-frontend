@@ -21,6 +21,26 @@ export const loginRequest = {
 // Initialize MSAL instance
 export const msalInstance = new PublicClientApplication(msalConfig);
 
+// Handle redirect promise on page load
+msalInstance.initialize().then(() => {
+  msalInstance.handleRedirectPromise()
+    .then((response) => {
+      if (response) {
+        // User has been successfully authenticated
+        msalInstance.setActiveAccount(response.account);
+      } else {
+        // Check if we have accounts
+        const accounts = msalInstance.getAllAccounts();
+        if (accounts.length > 0) {
+          msalInstance.setActiveAccount(accounts[0]);
+        }
+      }
+    })
+    .catch((error) => {
+      console.error('Redirect error:', error);
+    });
+});
+
 // API scope for your backend
 export const apiRequest = {
   scopes: [`api://${process.env.REACT_APP_AZURE_CLIENT_ID}/access_as_user`], // Your API scope

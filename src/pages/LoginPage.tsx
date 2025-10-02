@@ -21,30 +21,59 @@ const LoginPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Check if user is already logged in
+  // Check if user is already logged in or just completed login redirect
   useEffect(() => {
-    if (accounts.length > 0) {
-      // User is already signed in
-      const account = accounts[0];
-      const user = {
-        user_id: account.localAccountId,
-        name: account.name || account.username,
-        email: account.username,
-      };
+    const checkAccount = async () => {
+      // First, ensure redirect promise is handled
+      try {
+        const response = await instance.handleRedirectPromise();
+        if (response) {
+          // Just logged in via redirect
+          const account = response.account;
+          instance.setActiveAccount(account);
 
-      // Get the ID token to use as bearer token
-      instance.acquireTokenSilent({
-        ...loginRequest,
-        account: account
-      }).then(response => {
-        localStorage.setItem('authToken', response.idToken);
-        localStorage.setItem('user', JSON.stringify(user));
-        login(response.idToken, user);
-        navigate('/drafts');
-      }).catch(error => {
-        console.error('Token acquisition failed:', error);
-      });
-    }
+          const user = {
+            user_id: account.localAccountId,
+            name: account.name || account.username,
+            email: account.username,
+          };
+
+          localStorage.setItem('authToken', response.idToken);
+          localStorage.setItem('user', JSON.stringify(user));
+          login(response.idToken, user);
+          navigate('/drafts');
+          return;
+        }
+      } catch (error) {
+        console.error('Redirect handling error:', error);
+      }
+
+      // Check for existing accounts
+      if (accounts.length > 0) {
+        // User is already signed in
+        const account = accounts[0];
+        const user = {
+          user_id: account.localAccountId,
+          name: account.name || account.username,
+          email: account.username,
+        };
+
+        // Get the ID token to use as bearer token
+        instance.acquireTokenSilent({
+          ...loginRequest,
+          account: account
+        }).then(response => {
+          localStorage.setItem('authToken', response.idToken);
+          localStorage.setItem('user', JSON.stringify(user));
+          login(response.idToken, user);
+          navigate('/drafts');
+        }).catch(error => {
+          console.error('Token acquisition failed:', error);
+        });
+      }
+    };
+
+    checkAccount();
   }, [accounts, instance, login, navigate]);
 
   const handleMicrosoftLogin = async () => {
