@@ -52,26 +52,11 @@ const LoginPage: React.FC = () => {
     setError(null);
 
     try {
-      // Initiate login with Microsoft
-      const response = await instance.loginPopup(loginRequest);
-
-      if (response) {
-        const user = {
-          user_id: response.account.localAccountId,
-          name: response.account.name || response.account.username,
-          email: response.account.username,
-        };
-
-        // Store the ID token to use as bearer token for API calls
-        localStorage.setItem('authToken', response.idToken);
-        localStorage.setItem('user', JSON.stringify(user));
-
-        // Update app context
-        login(response.idToken, user);
-
-        // Navigate to drafts
-        navigate('/drafts');
-      }
+      // Initiate login with Microsoft using redirect instead of popup
+      // This will redirect the user to Microsoft login page
+      await instance.loginRedirect(loginRequest);
+      // The response will be handled when the user is redirected back to the app
+      // The useEffect hook above will handle the logged-in state
     } catch (err: any) {
       console.error('Login error:', err);
       setError('Login failed. Please ensure you use your Grant Thornton credentials.');
