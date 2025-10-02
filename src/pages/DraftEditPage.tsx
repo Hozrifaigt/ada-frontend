@@ -560,7 +560,6 @@ function ContentGenerationPanel({
   const [showFullChatMessages, setShowFullChatMessages] = useState(false);
   const [expandedMessages, setExpandedMessages] = useState<Set<string>>(new Set());
   const [isNavigating, setIsNavigating] = useState(false);
-  const [editingContent, setEditingContent] = useState(false);
   const [editedContent, setEditedContent] = useState('');
   const [rightPanelView, setRightPanelView] = useState<'generated' | 'current'>('generated');
   const conversationRef = React.useRef<HTMLDivElement>(null);
@@ -1003,8 +1002,6 @@ function ContentGenerationPanel({
       updateCurrentContent(currentItemId, editedContent);
       updateGeneratedContent(currentItemId, editedContent);
 
-      // Exit editing mode
-      setEditingContent(false);
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
 
@@ -1019,7 +1016,6 @@ function ContentGenerationPanel({
   React.useEffect(() => {
     if (selectedItem) {
       setEditedContent(selectedItem.content || '');
-      setEditingContent(false); // Reset editing mode when switching items
     }
   }, [selectedItem]);
 
