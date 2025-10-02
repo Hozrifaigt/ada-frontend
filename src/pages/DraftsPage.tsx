@@ -6,7 +6,6 @@ import {
   Grid,
   CircularProgress,
   Alert,
-  Chip,
   Container,
   IconButton,
   Tooltip,
@@ -25,12 +24,8 @@ import {
   Business,
   Search,
   FilterList,
-  MoreVert,
   FolderOpen,
-  Article,
-  TrendingUp,
-  CalendarToday,
-  Person,
+  CalendarToday
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { draftService } from '../services/draftService';

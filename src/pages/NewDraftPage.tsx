@@ -11,7 +11,6 @@ import {
   Step,
   StepLabel,
   Divider,
-  Chip,
   Container,
 } from '@mui/material';
 import {
@@ -19,11 +18,9 @@ import {
   Cancel,
   BusinessCenter,
   Description,
-  LocationCity,
   CheckCircleOutline,
   EditNote,
-  AutoAwesome,
-  FileDownload
+  AutoAwesome
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { draftService } from '../services/draftService';

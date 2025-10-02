@@ -14,6 +14,7 @@ jobs:
     if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action != 'closed')
     runs-on: ubuntu-latest
     name: Build and Deploy Job
+    environment: dev
     steps:
       - uses: actions/checkout@v3
         with:
@@ -33,6 +34,7 @@ jobs:
           output_location: "build" # Built app content directory - optional
           ###### End of Repository/Build Configurations ######
         env:
+          CI: false
           REACT_APP_API_BASE_URL: ${{ vars.REACT_APP_API_BASE_URL_DEV }}
           REACT_APP_AZURE_CLIENT_ID: ${{ secrets.REACT_APP_AZURE_CLIENT_ID_DEV }}
           REACT_APP_AZURE_TENANT_ID: ${{ secrets.REACT_APP_AZURE_TENANT_ID }}
