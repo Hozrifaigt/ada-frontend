@@ -15,10 +15,7 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  Card,
-  CardContent,
   Tooltip,
-  Divider,
   Container,
   Snackbar,
   Fade,
@@ -40,14 +37,11 @@ import {
   CheckCircle,
   Close,
   Error,
-  GetApp,
   Visibility,
   Assessment,
   Description,
   PictureAsPdf,
   InsertDriveFile,
-  Share,
-  Print,
   CloudDownload,
 } from '@mui/icons-material';
 import {
@@ -566,7 +560,6 @@ function ContentGenerationPanel({
   const [showFullChatMessages, setShowFullChatMessages] = useState(false);
   const [expandedMessages, setExpandedMessages] = useState<Set<string>>(new Set());
   const [isNavigating, setIsNavigating] = useState(false);
-  const [editingContent, setEditingContent] = useState(false);
   const [editedContent, setEditedContent] = useState('');
   const [rightPanelView, setRightPanelView] = useState<'generated' | 'current'>('generated');
   const conversationRef = React.useRef<HTMLDivElement>(null);

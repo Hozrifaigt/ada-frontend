@@ -12,7 +12,7 @@ import {
   StepContent,
   Button,
 } from '@mui/material';
-import { ExpandMore, PlayArrow } from '@mui/icons-material';
+import { ExpandMore } from '@mui/icons-material';
 
 const HelpPage: React.FC = () => {
   const [activeStep, setActiveStep] = React.useState(0);
