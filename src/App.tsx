@@ -28,6 +28,16 @@ const queryClient = new QueryClient({
 });
 
 function App() {
+  // Debug: Check if environment variables are loaded
+  React.useEffect(() => {
+    if (!process.env.REACT_APP_AZURE_CLIENT_ID) {
+      console.warn('⚠️ REACT_APP_AZURE_CLIENT_ID is not set. Using fallback value.');
+    }
+    if (!process.env.REACT_APP_AZURE_TENANT_ID) {
+      console.warn('⚠️ REACT_APP_AZURE_TENANT_ID is not set. Using fallback value.');
+    }
+  }, []);
+
   return (
     <MsalProvider instance={msalInstance}>
       <QueryClientProvider client={queryClient}>

@@ -66,7 +66,10 @@ const NewDraftPage: React.FC = () => {
 
     try {
       const response = await draftService.createDraft(formData);
-      navigate(`/drafts/${response.draft_id}`);
+      // Pass the TOC source info through navigation state
+      navigate(`/drafts/${response.draft_id}`, {
+        state: { tocSource: response.toc_source }
+      });
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to create draft. Please try again.');
       console.error('Error creating draft:', err);

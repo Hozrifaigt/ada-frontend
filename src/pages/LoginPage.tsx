@@ -24,6 +24,20 @@ const LoginPage: React.FC = () => {
   // Check if user is already logged in or just completed login redirect
   useEffect(() => {
     const checkAccount = async () => {
+      // Check if we're coming from a logout redirect
+      const urlParams = new URLSearchParams(window.location.search);
+      const isLogoutRedirect = urlParams.get('logout') === 'true';
+
+      if (isLogoutRedirect) {
+        // Clear any remaining auth state
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('user');
+
+        // Clear the logout parameter from URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+        return; // Don't auto-login after logout
+      }
+
       // First, ensure redirect promise is handled
       try {
         const response = await instance.handleRedirectPromise();
@@ -48,8 +62,8 @@ const LoginPage: React.FC = () => {
         console.error('Redirect handling error:', error);
       }
 
-      // Check for existing accounts
-      if (accounts.length > 0) {
+      // Check for existing accounts (but not if we just logged out)
+      if (accounts.length > 0 && !localStorage.getItem('justLoggedOut')) {
         // User is already signed in
         const account = accounts[0];
         const user = {
@@ -71,6 +85,9 @@ const LoginPage: React.FC = () => {
           console.error('Token acquisition failed:', error);
         });
       }
+
+      // Clean up the flag after check
+      localStorage.removeItem('justLoggedOut');
     };
 
     checkAccount();

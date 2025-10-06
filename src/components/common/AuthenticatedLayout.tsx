@@ -27,6 +27,7 @@ import {
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useMsal } from '@azure/msal-react';
+import Footer from './Footer';
 
 interface AuthenticatedLayoutProps {
   children: ReactNode;
@@ -60,22 +61,80 @@ const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({ children }) =
   };
 
   const handleLogout = async () => {
+    // Set a flag to prevent auto-login after logout
+    localStorage.setItem('justLoggedOut', 'true');
+
+    // Clear local storage
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('user');
+
     try {
-      // Clear local storage
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('user');
+      // Clear MSAL cache
+      const accounts = instance.getAllAccounts();
 
-      // Logout from Microsoft
-      await instance.logoutPopup();
+      if (accounts.length > 0) {
+        // For local development, we'll use a simpler approach
+        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
-      // Navigate to login
-      navigate('/login');
+        if (isLocalhost) {
+          // For localhost, do a local-only logout
+          console.log('Local logout - clearing session without Microsoft redirect');
+
+          // Clear MSAL active account
+          instance.setActiveAccount(null);
+
+          // Clear all MSAL-related items from localStorage
+          const msalKeys = Object.keys(localStorage).filter(key =>
+            key.includes('msal') || key.includes('login.windows') || key.includes('login.microsoft')
+          );
+          msalKeys.forEach(key => localStorage.removeItem(key));
+
+          // Clear session storage as well
+          const sessionKeys = Object.keys(sessionStorage).filter(key =>
+            key.includes('msal') || key.includes('login.windows') || key.includes('login.microsoft')
+          );
+          sessionKeys.forEach(key => sessionStorage.removeItem(key));
+
+          // Redirect to login page
+          window.location.href = '/login?logout=true';
+        } else {
+          // For production, use the full logout redirect
+          const redirectUri = process.env.REACT_APP_AZURE_REDIRECT_URI || window.location.origin;
+          const postLogoutRedirectUri = `${redirectUri}/login?logout=true`;
+
+          await instance.logoutRedirect({
+            postLogoutRedirectUri: postLogoutRedirectUri,
+            account: accounts[0]
+          });
+        }
+      } else {
+        // If no accounts, just redirect to login
+        window.location.href = '/login?logout=true';
+      }
     } catch (error) {
       console.error('Logout error:', error);
-      // Even if logout fails, clear local data and redirect
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('user');
-      navigate('/login');
+
+      // Fallback: Clear everything locally and force redirect
+      try {
+        instance.setActiveAccount(null);
+
+        // Clear the MSAL cache in localStorage
+        const msalKeys = Object.keys(localStorage).filter(key =>
+          key.includes('msal') || key.includes('login.windows') || key.includes('login.microsoft')
+        );
+        msalKeys.forEach(key => localStorage.removeItem(key));
+
+        // Clear session storage as well
+        const sessionKeys = Object.keys(sessionStorage).filter(key =>
+          key.includes('msal') || key.includes('login.windows') || key.includes('login.microsoft')
+        );
+        sessionKeys.forEach(key => sessionStorage.removeItem(key));
+      } catch (e) {
+        console.error('Failed to clear MSAL data:', e);
+      }
+
+      // Force redirect to login page
+      window.location.href = '/login?logout=true';
     }
   };
 
@@ -93,6 +152,7 @@ const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({ children }) =
         sx={{
           width: drawerOpen ? `calc(100% - ${drawerWidth}px)` : '100%',
           ml: drawerOpen ? `${drawerWidth}px` : 0,
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
           transition: (theme) =>
             theme.transitions.create(['margin', 'width'], {
               easing: theme.transitions.easing.sharp,
@@ -116,9 +176,18 @@ const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({ children }) =
           </Typography>
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Typography variant="body2">{user.name || 'User'}</Typography>
-            <IconButton onClick={handleProfileMenu} color="inherit">
-              <Avatar sx={{ width: 32, height: 32, bgcolor: 'secondary.main' }}>
+            <Typography variant="body2" sx={{ color: 'white', fontWeight: 500 }}>
+              {user.name || 'User'}
+            </Typography>
+            <IconButton onClick={handleProfileMenu} sx={{ p: 0 }}>
+              <Avatar sx={{
+                width: 36,
+                height: 36,
+                bgcolor: 'rgba(255, 255, 255, 0.95)',
+                color: '#667eea',
+                fontWeight: 600,
+                border: '2px solid rgba(255, 255, 255, 0.3)'
+              }}>
                 {(user.name || 'U')[0].toUpperCase()}
               </Avatar>
             </IconButton>
@@ -161,6 +230,9 @@ const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({ children }) =
           '& .MuiDrawer-paper': {
             width: drawerWidth,
             boxSizing: 'border-box',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
             transition: (theme) =>
               theme.transitions.create('width', {
                 easing: theme.transitions.easing.sharp,
@@ -173,65 +245,86 @@ const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({ children }) =
         open={drawerOpen}
       >
         <Toolbar>
-          <Typography variant="h5" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+          <Typography variant="h5" sx={{ fontWeight: 'bold', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
             ADA
           </Typography>
         </Toolbar>
         <Divider />
 
-        <List>
-          {menuItems.map((item) => (
-            <ListItem key={item.text} disablePadding>
-              <ListItemButton
-                selected={location.pathname === item.path}
-                onClick={() => navigate(item.path)}
-                sx={{
-                  '&.Mui-selected': {
-                    backgroundColor: 'primary.light',
-                    color: 'white',
-                    '& .MuiListItemIcon-root': {
-                      color: 'white',
-                    },
-                    '&:hover': {
-                      backgroundColor: 'primary.main',
-                    },
-                  },
-                }}
-              >
-                <ListItemIcon
+        <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+          <List sx={{ flex: 0, py: 1 }}>
+            {menuItems.map((item) => (
+              <ListItem key={item.text} disablePadding>
+                <ListItemButton
+                  selected={location.pathname === item.path}
+                  onClick={() => navigate(item.path)}
                   sx={{
-                    color: location.pathname === item.path ? 'white' : 'inherit',
+                    mx: 1,
+                    borderRadius: 2,
+                    mb: 0.5,
+                    '&:hover': {
+                      backgroundColor: 'rgba(102, 126, 234, 0.08)',
+                    },
+                    '&.Mui-selected': {
+                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      color: 'white',
+                      '& .MuiListItemIcon-root': {
+                        color: 'white',
+                      },
+                      '&:hover': {
+                        background: 'linear-gradient(135deg, #5a6fd8 0%, #6a4196 100%)',
+                      },
+                    },
                   }}
                 >
-                  {item.icon}
-                </ListItemIcon>
-                <ListItemText primary={item.text} />
-              </ListItemButton>
-            </ListItem>
-          ))}
-        </List>
+                  <ListItemIcon
+                    sx={{
+                      color: location.pathname === item.path ? 'white' : '#667eea',
+                      minWidth: 40,
+                    }}
+                  >
+                    {item.icon}
+                  </ListItemIcon>
+                  <ListItemText primary={item.text} sx={{ '& .MuiTypography-root': { fontWeight: location.pathname === item.path ? 600 : 400 } }} />
+                </ListItemButton>
+              </ListItem>
+            ))}
+          </List>
 
-        <Box sx={{ flexGrow: 1 }} />
+          <Box sx={{ flexGrow: 1 }} />
 
-        <Divider />
-        <ListItem disablePadding sx={{ mb: 2 }}>
-          <ListItemButton onClick={handleLogout}>
-            <ListItemIcon>
-              <Logout />
-            </ListItemIcon>
-            <ListItemText primary="Logout" />
-          </ListItemButton>
-        </ListItem>
+          <Divider />
+          <Box sx={{ p: 1, pb: 2 }}>
+            <ListItemButton
+              onClick={handleLogout}
+              sx={{
+                borderRadius: 2,
+                backgroundColor: 'rgba(239, 68, 68, 0.05)',
+                color: '#ef4444',
+                '&:hover': {
+                  backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                },
+              }}
+            >
+              <ListItemIcon sx={{ color: '#ef4444', minWidth: 40 }}>
+                <Logout />
+              </ListItemIcon>
+              <ListItemText primary="Logout" />
+            </ListItemButton>
+          </Box>
+        </Box>
       </Drawer>
 
       <Box
         component="main"
         sx={{
           flexGrow: 1,
+          display: 'flex',
+          flexDirection: 'column',
           bgcolor: 'background.default',
-          p: 3,
           width: drawerOpen ? `calc(100% - ${drawerWidth}px)` : '100%',
           ml: drawerOpen ? 0 : `-${drawerWidth}px`,
+          minHeight: '100vh',
           transition: (theme) =>
             theme.transitions.create(['margin', 'width'], {
               easing: theme.transitions.easing.sharp,
@@ -240,7 +333,10 @@ const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({ children }) =
         }}
       >
         <Toolbar />
-        {children}
+        <Box sx={{ flexGrow: 1, p: 3 }}>
+          {children}
+        </Box>
+        <Footer />
       </Box>
     </Box>
   );

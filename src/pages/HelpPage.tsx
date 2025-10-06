@@ -155,20 +155,6 @@ const HelpPage: React.FC = () => {
           ))}
         </Paper>
 
-      <Paper sx={{ p: 3, mt: 3, bgcolor: '#286ba1', color: 'white' }}>
-        <Typography variant="h6" gutterBottom>
-          Need More Help?
-        </Typography>
-        <Typography variant="body1" paragraph>
-          If you can't find the answer you're looking for, please contact our support team:
-        </Typography>
-        <Typography variant="body2">
-          Email: support@adapolicy.com
-        </Typography>
-        <Typography variant="body2">
-          Phone: 1-800-ADA-HELP
-        </Typography>
-      </Paper>
     </Box>
   );
 };

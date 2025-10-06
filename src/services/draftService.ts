@@ -4,6 +4,7 @@ import {
   Draft,
   DraftSummary,
   CreateDraftRequest,
+  CreateDraftResponse,
   UpdateTOCRequest,
   GenerateContentRequest,
   ContentGenerationResponse,
@@ -53,7 +54,7 @@ longTimeoutClient.interceptors.response.use(
 );
 
 export const draftService = {
-  async createDraft(data: CreateDraftRequest): Promise<{ draft_id: string; draft: Draft }> {
+  async createDraft(data: CreateDraftRequest): Promise<CreateDraftResponse> {
     const response = await longTimeoutClient.post('/api/v1/drafts/initialize', data);
     return response.data;
   },

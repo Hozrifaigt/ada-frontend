@@ -65,6 +65,12 @@ export interface CreateDraftRequest {
   client_metadata: ClientMetadata;
 }
 
+export interface CreateDraftResponse {
+  draft_id: string;
+  draft: Draft;
+  toc_source?: 'similarity_search' | 'ai_generated';
+}
+
 export interface UpdateTOCRequest {
   toc: TOCUpdateItem[];
 }
