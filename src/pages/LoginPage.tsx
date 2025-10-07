@@ -64,7 +64,29 @@ const LoginPage: React.FC = () => {
 
       // Check for existing accounts (but not if we just logged out)
       if (accounts.length > 0 && !localStorage.getItem('justLoggedOut')) {
-        // User is already signed in
+        // Check if we already have a valid token
+        const existingToken = localStorage.getItem('authToken');
+
+        if (existingToken) {
+          try {
+            // Check if the existing token is still valid
+            const tokenParts = existingToken.split('.');
+            if (tokenParts.length === 3) {
+              const payload = JSON.parse(atob(tokenParts[1]));
+              const expiry = payload.exp * 1000;
+
+              if (Date.now() < expiry) {
+                // Token is still valid, redirect to drafts
+                navigate('/drafts');
+                return;
+              }
+            }
+          } catch (error) {
+            console.error('Error checking existing token:', error);
+          }
+        }
+
+        // No valid token, try to acquire one silently
         const account = accounts[0];
         const user = {
           user_id: account.localAccountId,
@@ -83,11 +105,21 @@ const LoginPage: React.FC = () => {
           navigate('/drafts');
         }).catch(error => {
           console.error('Token acquisition failed:', error);
+          // Token acquisition failed - clear the MSAL cache and stay on login page
+          localStorage.setItem('justLoggedOut', 'true');
+          instance.logoutRedirect({
+            postLogoutRedirectUri: '/login'
+          }).catch(() => {
+            // Even if logout fails, stay on login page
+            console.log('MSAL logout failed, but staying on login page');
+          });
         });
       }
 
-      // Clean up the flag after check
-      localStorage.removeItem('justLoggedOut');
+      // Clean up the flag after check (with a small delay to ensure it's used)
+      setTimeout(() => {
+        localStorage.removeItem('justLoggedOut');
+      }, 1000);
     };
 
     checkAccount();

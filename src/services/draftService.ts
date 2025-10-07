@@ -43,9 +43,20 @@ longTimeoutClient.interceptors.response.use(
 
     if (error.response?.status === 401) {
       if (window.location.pathname !== '/login') {
+        console.log('401 Unauthorized in draftService - clearing auth and redirecting to login');
         localStorage.removeItem('authToken');
         localStorage.removeItem('user');
-        window.location.href = '/login';
+
+        // Set flag to prevent auto-login loop
+        localStorage.setItem('justLoggedOut', 'true');
+
+        // Clear MSAL cache by triggering logout through MSAL
+        // This needs to be done through the MSAL instance
+        // For now, we'll use a flag that PrivateRoute will handle
+        localStorage.setItem('clearMSALCache', 'true');
+
+        // Use replace to prevent back button issues
+        window.location.replace('/login');
       }
     }
 

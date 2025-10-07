@@ -362,15 +362,17 @@ function SortableTopic({
           )}
 
           <Box display="flex" gap={1}>
-            <Tooltip title={expandedTopics.has(topic.topic_id) ? 'Collapse' : 'Expand'}>
-              <IconButton
-                size="small"
-                onClick={() => onToggleExpansion(topic.topic_id)}
-                sx={{ color: '#667eea' }}
-              >
-                {expandedTopics.has(topic.topic_id) ? <ExpandLess /> : <ExpandMore />}
-              </IconButton>
-            </Tooltip>
+            {topic.subtopics && topic.subtopics.length > 0 && (
+              <Tooltip title={expandedTopics.has(topic.topic_id) ? 'Collapse' : 'Expand'}>
+                <IconButton
+                  size="small"
+                  onClick={() => onToggleExpansion(topic.topic_id)}
+                  sx={{ color: '#667eea' }}
+                >
+                  {expandedTopics.has(topic.topic_id) ? <ExpandLess /> : <ExpandMore />}
+                </IconButton>
+              </Tooltip>
+            )}
 
             <Tooltip title="Edit topic">
               <IconButton
@@ -570,7 +572,10 @@ function ContentGenerationPanel({
   const currentItemId = selectedItem?.id || '';
   const generatedContent = allGeneratedContent[currentItemId] || '';
   const currentContent = allCurrentContent[currentItemId] || '';
-  const localConversationHistory = conversations[currentItemId] || [];
+  const localConversationHistory = React.useMemo(() =>
+    conversations[currentItemId] || [],
+    [conversations, currentItemId]
+  );
   const hasUnsavedContentFlag = hasUnsavedContent[currentItemId] || false;
   const isAutoSaving = autoSaving[currentItemId] || false;
 
@@ -2888,7 +2893,7 @@ const DraftEditPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tabValue, setTabValue] = useState(0);
-  const [tocSource, setTocSource] = useState<'similarity_search' | 'ai_generated' | null>(
+  const [tocSource] = useState<'similarity_search' | 'ai_generated' | null>(
     location.state?.tocSource || null
   );
 
@@ -2945,13 +2950,7 @@ const DraftEditPage: React.FC = () => {
   const [showErrorNotification, setShowErrorNotification] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
-  useEffect(() => {
-    if (id) {
-      loadDraft(id);
-    }
-  }, [id]);
-
-  const loadDraft = async (draftId: string) => {
+  const loadDraft = React.useCallback(async (draftId: string) => {
     setLoading(true);
     setError(null);
     try {
@@ -2961,15 +2960,77 @@ const DraftEditPage: React.FC = () => {
       setOriginalToc(JSON.parse(JSON.stringify(data.toc))); // Deep copy
       setCurrentToc(JSON.parse(JSON.stringify(data.toc))); // Deep copy
       setHasUnsavedChanges(false);
-      // Initialize centralized content generation state
-      initializeCentralizedState(data);
+      // Initialize centralized content generation state will be called separately
     } catch (err) {
       setError('Failed to load draft. Please try again.');
       console.error('Error loading draft:', err);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (id) {
+      loadDraft(id);
+    }
+  }, [id, loadDraft]);
+
+  // Initialize centralized state when draft is loaded
+  useEffect(() => {
+    if (draft && draft.toc) {
+      // This will be called after initializeCentralizedState is defined
+      const initializeState = () => {
+        const conversations: Record<string, ExtendedConversationEntry[]> = {};
+        const generatedContent: Record<string, string> = {};
+        const currentContent: Record<string, string> = {};
+
+        // Process topics and subtopics
+        draft.toc.forEach(topic => {
+          const topicId = topic.topic_id;
+          conversations[topicId] = (topic.conversation_history || []).map(entry => ({
+            ...entry,
+            full_content: entry.ai_response,
+            summary: entry.ai_response?.length > 100 ? entry.ai_response.substring(0, 100) + '...' : entry.ai_response
+          }));
+          generatedContent[topicId] = topic.content || '';
+          currentContent[topicId] = topic.content || '';
+
+          // Process subtopics
+          topic.subtopics?.forEach(subtopic => {
+            const subtopicId = subtopic.subtopic_id;
+            conversations[subtopicId] = (subtopic.conversation_history || []).map(entry => ({
+              ...entry,
+              full_content: entry.ai_response,
+              summary: entry.ai_response?.length > 100 ? entry.ai_response.substring(0, 100) + '...' : entry.ai_response
+            }));
+            generatedContent[subtopicId] = subtopic.content || '';
+            currentContent[subtopicId] = subtopic.content || '';
+          });
+        });
+
+        // Set initial selected item to first topic
+        const firstTopic = draft.toc[0];
+        const selectedItem = firstTopic ? {
+          id: firstTopic.topic_id,
+          type: 'topic' as const,
+          title: firstTopic.topic,
+          content: firstTopic.content || '',
+          conversation_history: firstTopic.conversation_history || []
+        } : null;
+
+        setCentralizedState({
+          selectedItem,
+          conversations,
+          generatedContent,
+          currentContent,
+          hasUnsavedContent: {},
+          lastSavedAt: {}
+        });
+      };
+
+      initializeState();
+    }
+  }, [draft]);
 
   // Centralized Content Generation State Management Functions
   const updateSelectedItem = useCallback((item: {
