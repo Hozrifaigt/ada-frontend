@@ -65,6 +65,20 @@ export interface CreateDraftRequest {
   client_metadata: ClientMetadata;
 }
 
+export interface ValidateDraftRequest {
+  title: string;
+  description: string;
+  client_metadata: ClientMetadata;
+}
+
+export interface ValidateDraftResponse {
+  is_valid: boolean;
+  issues: string[];
+  suggestions: string[];
+  description_quality_score: number;
+  improved_description?: string;
+}
+
 export interface CreateDraftResponse {
   draft_id: string;
   draft: Draft;
@@ -103,4 +117,43 @@ export interface DraftProgress {
   completed: number;
   percentage: number;
   remaining: number;
+}
+
+// TOC Chat Types
+export interface TOCChatMessage {
+  message: string;
+  conversation_history?: Array<{
+    user_message: string;
+    ai_response: string;
+  }>;
+}
+
+export interface TOCOperation {
+  action: string;
+  parameters: Record<string, any>;
+  interpretation: string;
+  requires_confirmation: boolean;
+  error?: string;
+}
+
+export interface TOCChatResponse {
+  success: boolean;
+  operation?: TOCOperation;
+  preview_toc?: TOCTopic[];
+  current_toc: TOCTopic[];
+  message: string;
+  follow_up_question?: string;
+  suggestions?: string[];
+}
+
+export interface TOCConfirmRequest {
+  operation: TOCOperation;
+  current_toc: TOCTopic[];
+}
+
+export interface TOCConfirmResponse {
+  success: boolean;
+  updated_toc: TOCTopic[];
+  message: string;
+  undo_available: boolean;
 }

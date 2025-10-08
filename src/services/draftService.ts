@@ -9,6 +9,10 @@ import {
   GenerateContentRequest,
   ContentGenerationResponse,
   DraftProgress,
+  TOCTopic,
+  TOCChatResponse,
+  TOCOperation,
+  TOCConfirmResponse
 } from '../types/draft.types';
 
 // Create a special client with longer timeout for draft initialization and content generation
@@ -65,6 +69,11 @@ longTimeoutClient.interceptors.response.use(
 );
 
 export const draftService = {
+  async validateDraft(data: CreateDraftRequest): Promise<import('../types/draft.types').ValidateDraftResponse> {
+    const response = await apiClient.post('/api/v1/drafts/validate', data);
+    return response.data;
+  },
+
   async createDraft(data: CreateDraftRequest): Promise<CreateDraftResponse> {
     const response = await longTimeoutClient.post('/api/v1/drafts/initialize', data);
     return response.data;
@@ -139,6 +148,37 @@ export const draftService = {
       `/api/v1/drafts/${id}/export/pdf`,
       { delete_after_export: false },
       { responseType: 'blob' }
+    );
+    return response.data;
+  },
+
+  // TOC Chat Methods
+  async chatModifyToc(
+    draftId: string,
+    message: string,
+    conversationHistory?: Array<{ user_message: string; ai_response: string }>
+  ): Promise<TOCChatResponse> {
+    const response = await apiClient.post(
+      `/api/v1/drafts/${draftId}/toc/chat`,
+      {
+        message,
+        conversation_history: conversationHistory || []
+      }
+    );
+    return response.data;
+  },
+
+  async confirmTocModification(
+    draftId: string,
+    operation: TOCOperation,
+    currentToc: TOCTopic[]
+  ): Promise<TOCConfirmResponse> {
+    const response = await apiClient.post(
+      `/api/v1/drafts/${draftId}/toc/confirm`,
+      {
+        operation,
+        current_toc: currentToc
+      }
     );
     return response.data;
   },

@@ -12,6 +12,13 @@ import {
   StepLabel,
   Divider,
   Container,
+  CircularProgress,
+  Chip,
+  LinearProgress,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
 } from '@mui/material';
 import {
   Save,
@@ -20,16 +27,24 @@ import {
   Description,
   CheckCircleOutline,
   EditNote,
-  AutoAwesome
+  AutoAwesome,
+  Warning,
+  CheckCircle,
+  Info,
+  Error as ErrorIcon,
+  Lightbulb
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { draftService } from '../services/draftService';
-import { CreateDraftRequest } from '../types/draft.types';
+import { CreateDraftRequest, ValidateDraftResponse } from '../types/draft.types';
 
 const NewDraftPage: React.FC = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [validating, setValidating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [validationResult, setValidationResult] = useState<ValidateDraftResponse | null>(null);
+  const [showImprovedDescription, setShowImprovedDescription] = useState(false);
   const [formData, setFormData] = useState<CreateDraftRequest>({
     title: '',
     description: '',
@@ -42,6 +57,12 @@ const NewDraftPage: React.FC = () => {
   });
 
   const handleChange = (field: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
+    // Clear validation when user modifies the form
+    if (field === 'description' && validationResult) {
+      setValidationResult(null);
+      setShowImprovedDescription(false);
+    }
+
     if (field.includes('.')) {
       const [parent, child] = field.split('.');
       setFormData({
@@ -59,10 +80,57 @@ const NewDraftPage: React.FC = () => {
     }
   };
 
+  const validateDraft = async () => {
+    setValidating(true);
+    setError(null);
+
+    try {
+      const result = await draftService.validateDraft(formData);
+      setValidationResult(result);
+
+      if (!result.is_valid && result.improved_description) {
+        setShowImprovedDescription(true);
+      }
+
+      return result;
+    } catch (err: any) {
+      setError('Failed to validate draft. Please try again.');
+      console.error('Error validating draft:', err);
+      return null;
+    } finally {
+      setValidating(false);
+    }
+  };
+
+  const useImprovedDescription = () => {
+    if (validationResult?.improved_description) {
+      setFormData({
+        ...formData,
+        description: validationResult.improved_description
+      });
+      setShowImprovedDescription(false);
+      setValidationResult(null);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError(null);
+
+    // First validate the draft
+    const validation = await validateDraft();
+
+    if (!validation) {
+      return; // Validation failed with error
+    }
+
+    if (!validation.is_valid) {
+      // Don't proceed if validation failed
+      setError('Please fix the issues with your description before creating the draft.');
+      return;
+    }
+
+    setLoading(true);
 
     try {
       const response = await draftService.createDraft(formData);
@@ -148,20 +216,137 @@ const NewDraftPage: React.FC = () => {
                   </Grid>
 
                   <Grid item xs={12}>
-                    <TextField
-                      required
-                      fullWidth
-                      multiline
-                      rows={4}
-                      label="Description"
-                      value={formData.description}
-                      onChange={handleChange('description')}
-                      placeholder="Provide a detailed description of what this policy covers"
-                      helperText="Include the purpose, scope, and key objectives of the policy"
-                      InputProps={{
-                        sx: { backgroundColor: 'background.paper' }
-                      }}
-                    />
+                    <Box>
+                      <TextField
+                        required
+                        fullWidth
+                        multiline
+                        rows={4}
+                        label="Description"
+                        value={formData.description}
+                        onChange={handleChange('description')}
+                        placeholder="Provide a detailed description of what this policy covers"
+                        helperText={validationResult && !validationResult.is_valid ?
+                          "Description needs improvement - see issues below" :
+                          "Include the purpose, scope, and key objectives of the policy"}
+                        error={validationResult ? !validationResult.is_valid : false}
+                        InputProps={{
+                          sx: { backgroundColor: 'background.paper' }
+                        }}
+                      />
+
+                      {/* Validation Feedback */}
+                      {validationResult && (
+                        <Box sx={{ mt: 2 }}>
+                          {/* Quality Score */}
+                          <Box sx={{ mb: 2 }}>
+                            <Box display="flex" alignItems="center" justifyContent="space-between" mb={1}>
+                              <Typography variant="body2" color="text.secondary">
+                                Description Quality
+                              </Typography>
+                              <Chip
+                                size="small"
+                                label={`${validationResult.description_quality_score}%`}
+                                color={validationResult.description_quality_score >= 60 ? "success" :
+                                       validationResult.description_quality_score >= 30 ? "warning" : "error"}
+                              />
+                            </Box>
+                            <LinearProgress
+                              variant="determinate"
+                              value={validationResult.description_quality_score}
+                              sx={{
+                                height: 8,
+                                borderRadius: 4,
+                                backgroundColor: 'grey.300',
+                                '& .MuiLinearProgress-bar': {
+                                  borderRadius: 4,
+                                  backgroundColor: validationResult.description_quality_score >= 60 ? 'success.main' :
+                                                   validationResult.description_quality_score >= 30 ? 'warning.main' : 'error.main'
+                                }
+                              }}
+                            />
+                          </Box>
+
+                          {/* Issues */}
+                          {validationResult.issues.length > 0 && (
+                            <Alert severity="error" sx={{ mb: 2 }}>
+                              <Typography variant="subtitle2" gutterBottom>
+                                <strong>Issues Found:</strong>
+                              </Typography>
+                              <List dense sx={{ py: 0 }}>
+                                {validationResult.issues.map((issue, index) => (
+                                  <ListItem key={index} sx={{ py: 0, px: 0 }}>
+                                    <ListItemIcon sx={{ minWidth: 28 }}>
+                                      <ErrorIcon fontSize="small" />
+                                    </ListItemIcon>
+                                    <ListItemText primary={issue} />
+                                  </ListItem>
+                                ))}
+                              </List>
+                            </Alert>
+                          )}
+
+                          {/* Suggestions */}
+                          {validationResult.suggestions.length > 0 && (
+                            <Alert severity="info" sx={{ mb: 2 }}>
+                              <Typography variant="subtitle2" gutterBottom>
+                                <strong>Suggestions:</strong>
+                              </Typography>
+                              <List dense sx={{ py: 0 }}>
+                                {validationResult.suggestions.map((suggestion, index) => (
+                                  <ListItem key={index} sx={{ py: 0, px: 0 }}>
+                                    <ListItemIcon sx={{ minWidth: 28 }}>
+                                      <Lightbulb fontSize="small" />
+                                    </ListItemIcon>
+                                    <ListItemText primary={suggestion} />
+                                  </ListItem>
+                                ))}
+                              </List>
+                            </Alert>
+                          )}
+
+                          {/* Improved Description */}
+                          {showImprovedDescription && validationResult.improved_description && (
+                            <Alert
+                              severity="success"
+                              sx={{ mb: 2 }}
+                              action={
+                                <Button
+                                  color="inherit"
+                                  size="small"
+                                  onClick={useImprovedDescription}
+                                  startIcon={<AutoAwesome />}
+                                >
+                                  Use This
+                                </Button>
+                              }
+                            >
+                              <Typography variant="subtitle2" gutterBottom>
+                                <strong>Suggested Improved Description:</strong>
+                              </Typography>
+                              <Typography variant="body2" sx={{ mt: 1, fontStyle: 'italic' }}>
+                                "{validationResult.improved_description}"
+                              </Typography>
+                            </Alert>
+                          )}
+                        </Box>
+                      )}
+
+                      {/* Manual Validation Button */}
+                      {formData.description.trim().length > 0 && !validationResult && (
+                        <Box sx={{ mt: 2 }}>
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            onClick={validateDraft}
+                            disabled={validating}
+                            startIcon={validating ? <CircularProgress size={16} /> : <CheckCircle />}
+                          >
+                            {validating ? 'Validating...' : 'Check Description Quality'}
+                          </Button>
+                        </Box>
+                      )}
+                    </Box>
                   </Grid>
                 </Grid>
               </Box>
@@ -257,11 +442,11 @@ const NewDraftPage: React.FC = () => {
                     type="submit"
                     variant="contained"
                     size="large"
-                    startIcon={<Save />}
-                    disabled={loading || !isFormValid()}
+                    startIcon={loading || validating ? <CircularProgress size={20} color="inherit" /> : <Save />}
+                    disabled={loading || validating || !isFormValid()}
                     sx={{ minWidth: 150 }}
                   >
-                    {loading ? 'Creating...' : 'Create Draft'}
+                    {validating ? 'Validating...' : loading ? 'Creating...' : 'Create Draft'}
                   </Button>
                 </Box>
               </Box>

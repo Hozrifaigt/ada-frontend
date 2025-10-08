@@ -42,7 +42,9 @@ import {
   Description,
   PictureAsPdf,
   InsertDriveFile,
+  EditNote,
   CloudDownload,
+  Send,
   AutoAwesome,
   Source,
 } from '@mui/icons-material';
@@ -529,6 +531,15 @@ interface ContentGenerationPanelProps {
   // Auto-save functionality
   autoSaving: Record<string, boolean>;
   updateGeneratedContentWithAutoSave: (itemId: string, content: string) => void;
+  // TOC Chat Mode
+  tocChatMode: boolean;
+  setTocChatMode: (mode: boolean) => void;
+  tocPreview: Draft['toc'] | null;
+  setTocPreview: (toc: Draft['toc'] | null) => void;
+  pendingTocOperation: any;
+  setPendingTocOperation: (op: any) => void;
+  handleTocChatMessage: (chatInput: string, setChatInput: (input: string) => void, setGeneratingTopics: React.Dispatch<React.SetStateAction<Set<string>>>, setError: (error: string | null) => void) => Promise<void>;
+  confirmTocModification: () => Promise<void>;
 }
 
 function ContentGenerationPanel({
@@ -544,7 +555,15 @@ function ContentGenerationPanel({
   markContentAsUnsaved,
   markContentAsSaved,
   autoSaving,
-  updateGeneratedContentWithAutoSave
+  updateGeneratedContentWithAutoSave,
+  tocChatMode,
+  setTocChatMode,
+  tocPreview,
+  setTocPreview,
+  pendingTocOperation,
+  setPendingTocOperation,
+  handleTocChatMessage,
+  confirmTocModification
 }: ContentGenerationPanelProps) {
   // Extract state from centralized state
   const {
@@ -2915,6 +2934,14 @@ const DraftEditPage: React.FC = () => {
   const [newTopicText, setNewTopicText] = useState('');
   const [expandedTopics, setExpandedTopics] = useState<Set<string>>(new Set());
 
+  // TOC Chat Mode state
+  const [tocChatMode, setTocChatMode] = useState(true); // Default to true since it's now in TOC tab
+  const [tocPreview, setTocPreview] = useState<Draft['toc'] | null>(null);
+  const [pendingTocOperation, setPendingTocOperation] = useState<any>(null);
+  const [tocChatHistory, setTocChatHistory] = useState<Array<{ user_message: string; ai_response: string }>>([]);
+  const [tocChatInput, setTocChatInput] = useState('');
+  const [tocGeneratingTopics, setTocGeneratingTopics] = useState<Set<string>>(new Set());
+
   // Track changes for save functionality
   const [originalToc, setOriginalToc] = useState<Draft['toc'] | null>(null);
   const [currentToc, setCurrentToc] = useState<Draft['toc']>([]);
@@ -2974,6 +3001,121 @@ const DraftEditPage: React.FC = () => {
       loadDraft(id);
     }
   }, [id, loadDraft]);
+
+  // Handle TOC Chat Messages
+  const handleTocChatMessage = React.useCallback(async (
+    chatInput: string,
+    setChatInput: (input: string) => void,
+    setGeneratingTopics: React.Dispatch<React.SetStateAction<Set<string>>>,
+    setError: (error: string | null) => void
+  ) => {
+    if (!chatInput.trim() || !draft) return;
+
+    const userMessage = chatInput.trim();
+    setChatInput('');
+    setGeneratingTopics(prev => {
+      const newSet = new Set(prev);
+      newSet.add('toc-chat'); // Use special ID for TOC chat
+      return newSet;
+    });
+    setError(null);
+
+    try {
+      // Call TOC chat endpoint
+      const response = await draftService.chatModifyToc(
+        draft.id,
+        userMessage,
+        tocChatHistory
+      );
+
+      if (response.success) {
+        // Update chat history
+        setTocChatHistory(prev => [
+          ...prev,
+          {
+            user_message: userMessage,
+            ai_response: response.message
+          }
+        ]);
+
+        // Set preview if operation was parsed
+        if (response.preview_toc) {
+          setTocPreview(response.preview_toc);
+        }
+
+        // Store pending operation if confirmation needed
+        if (response.operation?.requires_confirmation) {
+          setPendingTocOperation(response.operation);
+        }
+
+        // Show follow-up question or suggestions
+        if (response.follow_up_question) {
+          // Could show this in a tooltip or info box
+          console.log('Follow-up:', response.follow_up_question);
+        }
+
+        // If operation doesn't require confirmation, apply it
+        if (response.operation && !response.operation.requires_confirmation) {
+          await confirmTocModification();
+        }
+      } else {
+        setError(response.message);
+      }
+    } catch (error: any) {
+      console.error('TOC chat failed:', error);
+      setError(error.response?.data?.detail || error.message || 'Failed to process TOC command');
+    } finally {
+      setGeneratingTopics(prev => {
+        const newSet = new Set(prev);
+        newSet.delete('toc-chat');
+        return newSet;
+      });
+    }
+  }, [draft, tocChatHistory]);
+
+  // Confirm and apply TOC modification
+  const confirmTocModification = React.useCallback(async () => {
+    if (!pendingTocOperation || !draft || !tocPreview) return;
+
+    try {
+      const response = await draftService.confirmTocModification(
+        draft.id,
+        pendingTocOperation,
+        currentToc
+      );
+
+      if (response.success) {
+        // Update the TOC
+        setCurrentToc(response.updated_toc);
+
+        // Also update the draft object's TOC
+        setDraft(prevDraft => {
+          if (!prevDraft) return prevDraft;
+          return {
+            ...prevDraft,
+            toc: response.updated_toc
+          };
+        });
+
+        setHasUnsavedChanges(true);
+
+        // Clear preview and pending operation
+        setTocPreview(null);
+        setPendingTocOperation(null);
+
+        // Show success message
+        setShowSuccessNotification(true);
+      } else {
+        console.error('Failed to apply changes:', response.message);
+        setErrorMessage(response.message || 'Failed to apply changes');
+        setShowErrorNotification(true);
+      }
+    } catch (error: any) {
+      console.error('TOC confirmation failed:', error);
+      setErrorMessage(error.response?.data?.detail || error.message || 'Failed to apply TOC changes');
+      setShowErrorNotification(true);
+    }
+  }, [pendingTocOperation, draft, tocPreview, currentToc]);
 
   // Initialize centralized state when draft is loaded
   useEffect(() => {
@@ -3787,14 +3929,17 @@ const DraftEditPage: React.FC = () => {
       </TabPanel>
 
       <TabPanel value={tabValue} index={1}>
-        <Box sx={{ maxWidth: '1000px' }}>
-          {/* TOC Header */}
-          <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-            <Box>
-              <Box display="flex" alignItems="center" gap={2} mb={1}>
-                <Typography variant="h5" fontWeight={600} sx={{ color: '#1a202c' }}>
-                  Table of Contents Management
-                </Typography>
+        <Box sx={{ display: 'flex', gap: 3, height: 'calc(100vh - 300px)', minHeight: 600 }}>
+          {/* Left Panel - TOC Management */}
+          <Box sx={{ flex: '1 1 50%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            {/* TOC Header */}
+            <Box mb={3}>
+              <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+                <Box>
+                  <Typography variant="h5" fontWeight={600} sx={{ color: '#1a202c' }}>
+                    Table of Contents
+                  </Typography>
+                </Box>
                 {tocSource === 'ai_generated' && (
                   <Tooltip title="This table of contents was generated by AI based on your description">
                     <Box
@@ -3852,14 +3997,15 @@ const DraftEditPage: React.FC = () => {
             >
               Add New Topic
             </Button>
-          </Box>
 
-          <Typography variant="body2" sx={{ color: '#64748b', mb: 4 }}>
-            {tocSource === 'ai_generated'
-              ? 'AI has suggested this structure based on your policy description. You can customize it as needed.'
-              : 'Organize your policy document structure. Click and drag to reorder, edit titles, or delete sections as needed.'}
-          </Typography>
+            <Typography variant="body2" sx={{ color: '#64748b', mb: 4, mt: 3 }}>
+              {tocSource === 'ai_generated'
+                ? 'AI has suggested this structure based on your policy description. You can customize it as needed.'
+                : 'Organize your policy document structure. Click and drag to reorder, edit titles, or delete sections as needed.'}
+            </Typography>
 
+            {/* Scrollable TOC Area */}
+            <Box sx={{ flex: 1, overflow: 'auto', pr: 2 }}>
           {/* TOC Items with Drag and Drop */}
           <DndContext
             sensors={sensors}
@@ -3927,9 +4073,10 @@ const DraftEditPage: React.FC = () => {
               </Button>
             </DialogActions>
           </Dialog>
+            </Box>
 
-          {/* Save TOC Button */}
-          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+            {/* Save TOC Button */}
+            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
             <Button
               variant="contained"
               startIcon={<Save />}
@@ -3963,6 +4110,185 @@ const DraftEditPage: React.FC = () => {
             >
               {saving ? 'Saving Changes...' : hasUnsavedChanges ? 'Save TOC Changes' : 'No Changes'}
             </Button>
+            </Box>
+          </Box>
+
+          {/* Right Panel - AI Chat for TOC */}
+          <Box sx={{
+            flex: '1 1 50%',
+            display: 'flex',
+            flexDirection: 'column',
+            borderLeft: '1px solid #e2e8f0',
+            pl: 3,
+            overflow: 'hidden'
+          }}>
+            {/* Chat Header - More Compact */}
+            <Box sx={{
+              mb: 2,
+              pb: 1.5,
+              borderBottom: '2px solid #e2e8f0'
+            }}>
+              <Box display="flex" alignItems="center" justifyContent="space-between">
+                <Box>
+                  <Typography variant="h6" fontWeight={600} sx={{ color: '#1a202c' }}>
+                    AI TOC Assistant
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: '#64748b' }}>
+                    Modify table of contents with natural language
+                  </Typography>
+                </Box>
+              </Box>
+            </Box>
+
+            {/* Chat Messages Area - More Compact */}
+            <Box sx={{
+              flex: 1,
+              overflow: 'auto',
+              mb: 2,
+              p: 2,
+              borderRadius: 2,
+              background: '#f9fafb',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 1.5
+            }}>
+              {tocChatHistory.length === 0 ? (
+                <Box sx={{
+                  textAlign: 'center',
+                  py: 3,
+                  color: '#94a3b8'
+                }}>
+                  <EditNote sx={{ fontSize: 36, mb: 1, opacity: 0.5 }} />
+                  <Typography variant="body2" fontWeight={600} sx={{ mb: 1 }}>
+                    Start a conversation
+                  </Typography>
+                  <Typography variant="caption" sx={{ maxWidth: 350, mx: 'auto', display: 'block' }}>
+                    Try: "Add security section" or "Rename Overview"
+                  </Typography>
+                </Box>
+              ) : (
+                tocChatHistory.map((entry, index) => (
+                  <Box key={index}>
+                    {/* User Message */}
+                    <Box sx={{
+                      display: 'flex',
+                      justifyContent: 'flex-end',
+                      mb: 0.5
+                    }}>
+                      <Paper sx={{
+                        px: 2,
+                        py: 1,
+                        maxWidth: '70%',
+                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        color: 'white',
+                        borderRadius: 1.5
+                      }}>
+                        <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>{entry.user_message}</Typography>
+                      </Paper>
+                    </Box>
+                    {/* AI Response */}
+                    <Box sx={{
+                      display: 'flex',
+                      justifyContent: 'flex-start',
+                      mb: 1
+                    }}>
+                      <Paper sx={{
+                        px: 2,
+                        py: 1,
+                        maxWidth: '70%',
+                        background: 'white',
+                        borderRadius: 1.5,
+                        border: '1px solid #e2e8f0'
+                      }}>
+                        <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>{entry.ai_response}</Typography>
+                      </Paper>
+                    </Box>
+                  </Box>
+                ))
+              )}
+
+              {/* TOC Preview if exists */}
+              {tocPreview && (
+                <Alert
+                  severity="info"
+                  sx={{ mt: 2 }}
+                  action={
+                    <Box display="flex" gap={1}>
+                      <Button size="small" onClick={confirmTocModification}>Apply</Button>
+                      <Button size="small" onClick={() => {
+                        setTocPreview(null);
+                        setPendingTocOperation(null);
+                      }}>Cancel</Button>
+                    </Box>
+                  }
+                >
+                  <Typography variant="body2">
+                    {pendingTocOperation?.interpretation || 'Preview of changes above. Apply or cancel?'}
+                  </Typography>
+                </Alert>
+              )}
+            </Box>
+
+            {/* Chat Input Area - Compact */}
+            <Box sx={{
+              display: 'flex',
+              gap: 1,
+              p: 1.5,
+              borderTop: '1px solid #e2e8f0',
+              background: 'white'
+            }}>
+              <TextField
+                fullWidth
+                multiline
+                maxRows={2}
+                placeholder="Type a command... e.g., 'Add security section'"
+                value={tocChatInput}
+                onChange={(e) => setTocChatInput(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleTocChatMessage(tocChatInput, setTocChatInput, setTocGeneratingTopics, (msg) => {
+                      setErrorMessage(msg || '');
+                      if (msg) setShowErrorNotification(true);
+                    });
+                  }
+                }}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 1.5,
+                    '&.Mui-focused fieldset': {
+                      borderColor: '#667eea'
+                    }
+                  },
+                  '& .MuiInputBase-input': {
+                    fontSize: '0.875rem'
+                  }
+                }}
+              />
+              <Button
+                variant="contained"
+                onClick={() => handleTocChatMessage(tocChatInput, setTocChatInput, setTocGeneratingTopics, (msg) => {
+                  setErrorMessage(msg || '');
+                  if (msg) setShowErrorNotification(true);
+                })}
+                disabled={!tocChatInput.trim() || tocGeneratingTopics.has('toc-chat')}
+                sx={{
+                  minWidth: 48,
+                  height: 48,
+                  borderRadius: 1.5,
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  '&:hover': {
+                    background: 'linear-gradient(135deg, #5a67d8 0%, #6b5b95 100%)'
+                  }
+                }}
+              >
+                {tocGeneratingTopics.has('toc-chat') ? (
+                  <CircularProgress size={20} sx={{ color: 'white' }} />
+                ) : (
+                  <Send sx={{ color: 'white' }} />
+                )}
+              </Button>
+            </Box>
           </Box>
         </Box>
       </TabPanel>
@@ -3982,6 +4308,14 @@ const DraftEditPage: React.FC = () => {
           markContentAsSaved={markContentAsSaved}
           autoSaving={autoSaving}
           updateGeneratedContentWithAutoSave={updateGeneratedContentWithAutoSave}
+          tocChatMode={tocChatMode}
+          setTocChatMode={setTocChatMode}
+          tocPreview={tocPreview}
+          setTocPreview={setTocPreview}
+          pendingTocOperation={pendingTocOperation}
+          setPendingTocOperation={setPendingTocOperation}
+          handleTocChatMessage={handleTocChatMessage}
+          confirmTocModification={confirmTocModification}
         />
       </TabPanel>
 
