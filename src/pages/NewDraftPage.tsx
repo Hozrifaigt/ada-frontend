@@ -242,14 +242,24 @@ const NewDraftPage: React.FC = () => {
                           <Box sx={{ mb: 2 }}>
                             <Box display="flex" alignItems="center" justifyContent="space-between" mb={1}>
                               <Typography variant="body2" color="text.secondary">
-                                Description Quality
+                                Description Quality (minimum 50% required)
                               </Typography>
-                              <Chip
-                                size="small"
-                                label={`${validationResult.description_quality_score}%`}
-                                color={validationResult.description_quality_score >= 60 ? "success" :
-                                       validationResult.description_quality_score >= 30 ? "warning" : "error"}
-                              />
+                              <Box display="flex" alignItems="center" gap={1}>
+                                {validationResult.description_quality_score < 50 && (
+                                  <Chip
+                                    size="small"
+                                    label="Below Minimum"
+                                    color="error"
+                                    variant="outlined"
+                                  />
+                                )}
+                                <Chip
+                                  size="small"
+                                  label={`${validationResult.description_quality_score}%`}
+                                  color={validationResult.description_quality_score >= 60 ? "success" :
+                                         validationResult.description_quality_score >= 50 ? "warning" : "error"}
+                                />
+                              </Box>
                             </Box>
                             <LinearProgress
                               variant="determinate"
@@ -261,10 +271,21 @@ const NewDraftPage: React.FC = () => {
                                 '& .MuiLinearProgress-bar': {
                                   borderRadius: 4,
                                   backgroundColor: validationResult.description_quality_score >= 60 ? 'success.main' :
-                                                   validationResult.description_quality_score >= 30 ? 'warning.main' : 'error.main'
+                                                   validationResult.description_quality_score >= 50 ? 'warning.main' : 'error.main'
                                 }
                               }}
                             />
+                            <Box display="flex" justifyContent="space-between" mt={0.5}>
+                              <Typography variant="caption" color="text.secondary">
+                                Poor (0-49%)
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                Acceptable (50-69%)
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                Good (70%+)
+                              </Typography>
+                            </Box>
                           </Box>
 
                           {/* Issues */}
