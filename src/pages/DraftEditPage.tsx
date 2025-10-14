@@ -2912,7 +2912,8 @@ const DraftEditPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tabValue, setTabValue] = useState(0);
-  const [tocSource] = useState<'similarity_search' | 'ai_generated' | null>(
+  // Get TOC source from draft metadata (persistent) or navigation state (temporary for new drafts)
+  const [tocSource, setTocSource] = useState<'similarity_search' | 'ai_generated' | null>(
     location.state?.tocSource || null
   );
 
@@ -2941,6 +2942,7 @@ const DraftEditPage: React.FC = () => {
   const [tocChatHistory, setTocChatHistory] = useState<Array<{ user_message: string; ai_response: string }>>([]);
   const [tocChatInput, setTocChatInput] = useState('');
   const [tocGeneratingTopics, setTocGeneratingTopics] = useState<Set<string>>(new Set());
+  const tocChatEndRef = useRef<HTMLDivElement>(null);
 
   // Track changes for save functionality
   const [originalToc, setOriginalToc] = useState<Draft['toc'] | null>(null);
@@ -2987,6 +2989,10 @@ const DraftEditPage: React.FC = () => {
       setOriginalToc(JSON.parse(JSON.stringify(data.toc))); // Deep copy
       setCurrentToc(JSON.parse(JSON.stringify(data.toc))); // Deep copy
       setHasUnsavedChanges(false);
+      // Load TOC source from draft metadata
+      if (data.metadata?.toc_source) {
+        setTocSource(data.metadata.toc_source as 'similarity_search' | 'ai_generated');
+      }
       // Initialize centralized content generation state will be called separately
     } catch (err) {
       setError('Failed to load draft. Please try again.');
@@ -3013,6 +3019,16 @@ const DraftEditPage: React.FC = () => {
 
     const userMessage = chatInput.trim();
     setChatInput('');
+
+    // Add user message immediately to chat history with a loading state
+    setTocChatHistory(prev => [
+      ...prev,
+      {
+        user_message: userMessage,
+        ai_response: '...' // Temporary loading indicator
+      }
+    ]);
+
     setGeneratingTopics(prev => {
       const newSet = new Set(prev);
       newSet.add('toc-chat'); // Use special ID for TOC chat
@@ -3029,22 +3045,23 @@ const DraftEditPage: React.FC = () => {
       );
 
       if (response.success) {
-        // Update chat history
-        setTocChatHistory(prev => [
-          ...prev,
-          {
+        // Update the last message with the actual AI response
+        setTocChatHistory(prev => {
+          const updated = [...prev];
+          updated[updated.length - 1] = {
             user_message: userMessage,
             ai_response: response.message
-          }
-        ]);
+          };
+          return updated;
+        });
 
         // Set preview if operation was parsed
         if (response.preview_toc) {
           setTocPreview(response.preview_toc);
         }
 
-        // Store pending operation if confirmation needed
-        if (response.operation?.requires_confirmation) {
+        // Store pending operation for user to confirm
+        if (response.operation) {
           setPendingTocOperation(response.operation);
         }
 
@@ -3054,10 +3071,8 @@ const DraftEditPage: React.FC = () => {
           console.log('Follow-up:', response.follow_up_question);
         }
 
-        // If operation doesn't require confirmation, apply it
-        if (response.operation && !response.operation.requires_confirmation) {
-          await confirmTocModification();
-        }
+        // Note: All operations now require confirmation, so no auto-apply
+        // User must click the "Apply" button to confirm changes
       } else {
         setError(response.message);
       }
@@ -3116,6 +3131,13 @@ const DraftEditPage: React.FC = () => {
       setShowErrorNotification(true);
     }
   }, [pendingTocOperation, draft, tocPreview, currentToc]);
+
+  // Auto-scroll to bottom when chat history updates
+  useEffect(() => {
+    if (tocChatEndRef.current) {
+      tocChatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [tocChatHistory]);
 
   // Initialize centralized state when draft is loaded
   useEffect(() => {
@@ -4140,9 +4162,11 @@ const DraftEditPage: React.FC = () => {
               </Box>
             </Box>
 
-            {/* Chat Messages Area - More Compact */}
+            {/* Chat Messages Area - Scrollable with Fixed Height */}
             <Box sx={{
-              flex: 1,
+              height: 'calc(100vh - 400px)', // Fixed height that accounts for header, input, etc.
+              minHeight: '400px',
+              maxHeight: '600px',
               overflow: 'auto',
               mb: 2,
               p: 2,
@@ -4150,7 +4174,21 @@ const DraftEditPage: React.FC = () => {
               background: '#f9fafb',
               display: 'flex',
               flexDirection: 'column',
-              gap: 1.5
+              gap: 1.5,
+              '&::-webkit-scrollbar': {
+                width: '8px',
+              },
+              '&::-webkit-scrollbar-track': {
+                background: '#f1f1f1',
+                borderRadius: '4px',
+              },
+              '&::-webkit-scrollbar-thumb': {
+                background: '#888',
+                borderRadius: '4px',
+                '&:hover': {
+                  background: '#555',
+                },
+              },
             }}>
               {tocChatHistory.length === 0 ? (
                 <Box sx={{
@@ -4200,7 +4238,25 @@ const DraftEditPage: React.FC = () => {
                         borderRadius: 1.5,
                         border: '1px solid #e2e8f0'
                       }}>
-                        <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>{entry.ai_response}</Typography>
+                        {entry.ai_response === '...' ? (
+                          <Box display="flex" alignItems="center" gap={1}>
+                            <CircularProgress size={16} />
+                            <Typography variant="body2" sx={{ fontSize: '0.875rem', color: '#94a3b8' }}>
+                              Thinking...
+                            </Typography>
+                          </Box>
+                        ) : (
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              fontSize: '0.875rem',
+                              whiteSpace: 'pre-wrap', // Preserve line breaks and spacing
+                              wordBreak: 'break-word' // Prevent long words from breaking layout
+                            }}
+                          >
+                            {entry.ai_response}
+                          </Typography>
+                        )}
                       </Paper>
                     </Box>
                   </Box>
@@ -4208,25 +4264,56 @@ const DraftEditPage: React.FC = () => {
               )}
 
               {/* TOC Preview if exists */}
-              {tocPreview && (
-                <Alert
-                  severity="info"
-                  sx={{ mt: 2 }}
-                  action={
-                    <Box display="flex" gap={1}>
-                      <Button size="small" onClick={confirmTocModification}>Apply</Button>
-                      <Button size="small" onClick={() => {
-                        setTocPreview(null);
-                        setPendingTocOperation(null);
-                      }}>Cancel</Button>
-                    </Box>
-                  }
-                >
-                  <Typography variant="body2">
-                    {pendingTocOperation?.interpretation || 'Preview of changes above. Apply or cancel?'}
-                  </Typography>
-                </Alert>
+              {tocPreview && pendingTocOperation && (
+                <>
+                  {/* Only show Apply/Cancel for actionable operations, not suggestions */}
+                  {pendingTocOperation.action !== 'suggest_topics' ? (
+                    <Alert
+                      severity="info"
+                      sx={{ mt: 2 }}
+                      action={
+                        <Box display="flex" gap={1}>
+                          <Button size="small" onClick={confirmTocModification}>Apply</Button>
+                          <Button size="small" onClick={() => {
+                            setTocPreview(null);
+                            setPendingTocOperation(null);
+                          }}>Cancel</Button>
+                        </Box>
+                      }
+                    >
+                      <Typography variant="body2">
+                        {pendingTocOperation.interpretation || 'Preview of changes above. Apply or cancel?'}
+                      </Typography>
+                    </Alert>
+                  ) : (
+                    <Alert
+                      severity="success"
+                      sx={{ mt: 2 }}
+                      action={
+                        <Button
+                          size="small"
+                          onClick={() => {
+                            setTocPreview(null);
+                            setPendingTocOperation(null);
+                          }}
+                        >
+                          Got it
+                        </Button>
+                      }
+                    >
+                      <Typography variant="body2" fontWeight={600} gutterBottom>
+                        💡 Suggestions (informational only)
+                      </Typography>
+                      <Typography variant="caption">
+                        These are recommendations to improve your TOC. You can implement them by giving specific commands like "add topic X", "remove topic Y", etc.
+                      </Typography>
+                    </Alert>
+                  )}
+                </>
               )}
+
+              {/* Scroll anchor */}
+              <div ref={tocChatEndRef} />
             </Box>
 
             {/* Chat Input Area - Compact */}

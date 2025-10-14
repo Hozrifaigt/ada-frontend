@@ -40,6 +40,7 @@ export interface DraftMetadata {
   modified_at: string;
   client_metadata: ClientMetadata;
   most_similar_policy_id?: string;
+  toc_source?: 'similarity_search' | 'ai_generated';
 }
 
 export interface Draft {
