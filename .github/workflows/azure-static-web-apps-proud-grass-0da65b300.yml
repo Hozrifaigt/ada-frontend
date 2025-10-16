@@ -4,19 +4,17 @@ on:
   push:
     branches:
       - dev
-      - main
   pull_request:
     types: [opened, synchronize, reopened, closed]
     branches:
       - dev
-      - main
 
 jobs:
   build_and_deploy_job:
     if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action != 'closed')
     runs-on: ubuntu-latest
     name: Build and Deploy Job
-    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'dev' }}
+    environment: dev
     steps:
       - uses: actions/checkout@v3
         with:
@@ -26,7 +24,7 @@ jobs:
         id: builddeploy
         uses: Azure/static-web-apps-deploy@v1
         with:
-          azure_static_web_apps_api_token: ${{ github.ref == 'refs/heads/main' && secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_PROD || secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_DEV }}
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_PROUD_GRASS_0DA65B300  }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: "upload"
           app_location: "/"
@@ -34,19 +32,20 @@ jobs:
           output_location: "build"
         env:
           CI: false
-          REACT_APP_API_BASE_URL: ${{ github.ref == 'refs/heads/main' && vars.REACT_APP_API_BASE_URL_PROD || vars.REACT_APP_API_BASE_URL_DEV }}
-          REACT_APP_AZURE_CLIENT_ID: ${{ github.ref == 'refs/heads/main' && secrets.REACT_APP_AZURE_CLIENT_ID_PROD || secrets.REACT_APP_AZURE_CLIENT_ID_DEV }}
+          REACT_APP_API_BASE_URL: ${{ vars.REACT_APP_API_BASE_URL_DEV }}
+          REACT_APP_AZURE_CLIENT_ID: ${{ secrets.REACT_APP_AZURE_CLIENT_ID_DEV }}
           REACT_APP_AZURE_TENANT_ID: ${{ secrets.REACT_APP_AZURE_TENANT_ID }}
-          REACT_APP_AZURE_REDIRECT_URI: ${{ github.ref == 'refs/heads/main' && vars.REACT_APP_AZURE_REDIRECT_URI_PROD || vars.REACT_APP_AZURE_REDIRECT_URI_DEV }}
+          REACT_APP_AZURE_REDIRECT_URI: ${{ vars.REACT_APP_AZURE_REDIRECT_URI_DEV }}
 
   close_pull_request_job:
     if: github.event_name == 'pull_request' && github.event.action == 'closed'
     runs-on: ubuntu-latest
     name: Close Pull Request Job
+    environment: dev
     steps:
       - name: Close Pull Request
         id: closepullrequest
         uses: Azure/static-web-apps-deploy@v1
         with:
-          azure_static_web_apps_api_token: ${{ github.ref == 'refs/heads/main' && secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_PROD || secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_DEV }}
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_PROUD_GRASS_0DA65B300  }}
           action: "close"
