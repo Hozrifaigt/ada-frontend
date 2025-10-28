@@ -19,6 +19,14 @@ import {
   ListItem,
   ListItemIcon,
   ListItemText,
+  FormControl,
+  FormLabel,
+  RadioGroup,
+  Radio,
+  FormControlLabel,
+  Select,
+  MenuItem,
+  InputLabel,
 } from '@mui/material';
 import {
   Save,
@@ -51,9 +59,11 @@ const NewDraftPage: React.FC = () => {
     client_metadata: {
       name: '',
       country: '',
-      city: '',
       industry: '',
     },
+    unique_requirements: '',
+    regulations: ['UAE Labor Law'],
+    detail_level: 'light',
   });
 
   const handleChange = (field: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -152,8 +162,8 @@ const NewDraftPage: React.FC = () => {
       formData.description.trim() !== '' &&
       formData.client_metadata.name.trim() !== '' &&
       formData.client_metadata.country.trim() !== '' &&
-      formData.client_metadata.city.trim() !== '' &&
-      formData.client_metadata.industry.trim() !== ''
+      formData.client_metadata.industry.trim() !== '' &&
+      formData.regulations.length > 0
     );
   };
 
@@ -369,6 +379,52 @@ const NewDraftPage: React.FC = () => {
                       )}
                     </Box>
                   </Grid>
+
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      multiline
+                      rows={3}
+                      label="Unique Client Requirements"
+                      value={formData.unique_requirements}
+                      onChange={handleChange('unique_requirements')}
+                      placeholder="Describe any specific requirements or customizations for this client"
+                      helperText="Optional: Add any unique business needs, industry-specific requirements, or custom policies"
+                      InputProps={{
+                        sx: { backgroundColor: 'background.paper' }
+                      }}
+                    />
+                  </Grid>
+
+                  <Grid item xs={12} md={6}>
+                    <FormControl fullWidth required>
+                      <InputLabel>Regulations</InputLabel>
+                      <Select
+                        value={formData.regulations[0] || ''}
+                        onChange={(e) => setFormData({ ...formData, regulations: [e.target.value] })}
+                        label="Regulations"
+                        sx={{ backgroundColor: 'background.paper' }}
+                      >
+                        <MenuItem value="UAE Labor Law">UAE Labor Law</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </Grid>
+
+                  <Grid item xs={12} md={6}>
+                    <FormControl component="fieldset">
+                      <FormLabel component="legend" sx={{ mb: 1 }}>
+                        Level of Details
+                      </FormLabel>
+                      <RadioGroup
+                        row
+                        value={formData.detail_level}
+                        onChange={(e) => setFormData({ ...formData, detail_level: e.target.value as 'light' | 'deep' })}
+                      >
+                        <FormControlLabel value="light" control={<Radio />} label="Light" />
+                        <FormControlLabel value="deep" control={<Radio />} label="Deep" />
+                      </RadioGroup>
+                    </FormControl>
+                  </Grid>
                 </Grid>
               </Box>
 
@@ -425,20 +481,6 @@ const NewDraftPage: React.FC = () => {
                       }}
                     />
                   </Grid>
-
-                  <Grid item xs={12} md={6}>
-                    <TextField
-                      required
-                      fullWidth
-                      label="City"
-                      value={formData.client_metadata.city}
-                      onChange={handleChange('client_metadata.city')}
-                      placeholder="e.g., Dubai"
-                      InputProps={{
-                        sx: { backgroundColor: 'background.paper' }
-                      }}
-                    />
-                  </Grid>
                 </Grid>
               </Box>
 
@@ -446,7 +488,7 @@ const NewDraftPage: React.FC = () => {
 
               <Box display="flex" justifyContent="space-between" alignItems="center">
                 <Typography variant="body2" color="text.secondary">
-                  All fields are required
+                  * Required fields
                 </Typography>
                 <Box display="flex" gap={2}>
                   <Button

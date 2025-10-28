@@ -3873,7 +3873,7 @@ const DraftEditPage: React.FC = () => {
                   <Box display="flex" alignItems="center" gap={1}>
                     <LocationOn sx={{ fontSize: 18, color: '#667eea' }} />
                     <Typography variant="body2" sx={{ color: '#4a5568', fontWeight: 500 }}>
-                      {draft.metadata.client_metadata.city}, {draft.metadata.client_metadata.country}
+                      {draft.metadata.client_metadata.country}
                     </Typography>
                   </Box>
                 </Box>

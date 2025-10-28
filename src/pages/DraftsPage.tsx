@@ -371,7 +371,7 @@ const DraftsPage: React.FC = () => {
                                   fontSize: '0.8rem',
                                 }}
                               >
-                                {draft.client_metadata.city}, {draft.client_metadata.country}
+                                {draft.client_metadata.country}
                               </Typography>
                             </Box>
                           </Box>

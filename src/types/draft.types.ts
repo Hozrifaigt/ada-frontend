@@ -1,7 +1,6 @@
 export interface ClientMetadata {
   name: string;
   country: string;
-  city: string;
   industry: string;
 }
 
@@ -64,12 +63,18 @@ export interface CreateDraftRequest {
   title: string;
   description: string;
   client_metadata: ClientMetadata;
+  unique_requirements?: string;
+  regulations: string[];
+  detail_level: 'light' | 'deep';
 }
 
 export interface ValidateDraftRequest {
   title: string;
   description: string;
   client_metadata: ClientMetadata;
+  unique_requirements?: string;
+  regulations: string[];
+  detail_level: 'light' | 'deep';
 }
 
 export interface ValidateDraftResponse {
