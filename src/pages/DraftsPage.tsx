@@ -13,6 +13,14 @@ import {
   Paper,
   InputBase,
   Divider,
+  Drawer,
+  TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Chip,
+  Autocomplete,
 } from '@mui/material';
 import {
   Add,
@@ -25,11 +33,28 @@ import {
   Search,
   FilterList,
   FolderOpen,
-  CalendarToday
+  CalendarToday,
+  Close,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import { Country, State } from 'country-state-city';
 import { draftService } from '../services/draftService';
 import { DraftSummary } from '../types/draft.types';
+
+// Industry options (same as NewDraftPage)
+const INDUSTRY_OPTIONS = [
+  'Manufacturing',
+  'Telecom',
+  'Technology',
+  'Media',
+  'Government',
+  'Healthcare',
+  'Hospitality',
+  'Finance',
+  'Fund',
+  'Banking',
+  'Family Conglomerate'
+];
 
 const DraftsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -37,15 +62,107 @@ const DraftsPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Filter and search state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+  const [functions, setFunctions] = useState<string[]>([]);
+  const [policyTypes, setPolicyTypes] = useState<string[]>([]);
+  const [filters, setFilters] = useState<{
+    title?: string;
+    country?: string;
+    city?: string;
+    created_by?: string;
+    industry?: string;
+    function?: string;
+    policy_type?: string;
+  }>({});
+
+  // Temporary filters for the drawer (only applied when clicking Apply)
+  const [tempFilters, setTempFilters] = useState<typeof filters>({});
+
+  // Track if initial load has completed to prevent duplicate calls
+  const initialLoadDone = React.useRef(false);
+
+  // Get all countries (filter out Israel)
+  const countries = Country.getAllCountries().filter(country => country.isoCode !== 'IL');
+
   useEffect(() => {
+    // Load initial data on mount only once
+    console.log('🚀 Initial mount - loading functions and drafts');
+    loadFunctions();
     loadDrafts();
+    initialLoadDone.current = true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const loadDrafts = async () => {
+  useEffect(() => {
+    // Debounce search - only update filters if there's an actual change
+    const timer = setTimeout(() => {
+      setFilters(prev => {
+        if (searchQuery) {
+          // Only update if title is different
+          if (prev.title !== searchQuery) {
+            return { ...prev, title: searchQuery };
+          }
+        } else {
+          // Only update if title exists and needs to be removed
+          if (prev.title) {
+            const { title, ...rest } = prev;
+            return rest;
+          }
+        }
+        // No change needed, return same object to avoid re-render
+        return prev;
+      });
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    // Skip the initial mount since we load drafts in the first useEffect
+    if (!initialLoadDone.current) {
+      return;
+    }
+
+    // Reload drafts whenever filters change after initial mount
+    console.log('🔄 Filters changed, reloading drafts');
+    loadDrafts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters]);
+
+  const loadFunctions = async () => {
+    try {
+      const response = await draftService.getFunctions();
+      setFunctions(response.policy_types || []);
+    } catch (err) {
+      console.error('Error loading functions:', err);
+    }
+  };
+
+  const loadPolicyTypes = async (functionName: string) => {
+    if (!functionName) {
+      setPolicyTypes([]);
+      return;
+    }
+    try {
+      const response = await draftService.getPolicyTypes(functionName);
+      setPolicyTypes(response.policy_types || []);
+    } catch (err) {
+      console.error('Error loading policy types:', err);
+      setPolicyTypes([]);
+    }
+  };
+
+  const loadDrafts = async (filtersToUse?: typeof filters) => {
     setLoading(true);
     setError(null);
     try {
-      const response = await draftService.getDrafts();
+      // Use provided filters or fall back to state filters
+      const activeFilters = filtersToUse !== undefined ? filtersToUse : filters;
+      console.log('🔍 [loadDrafts called] Filters:', activeFilters, 'Stack:', new Error().stack?.split('\n')[2]);
+      const response = await draftService.getDrafts(activeFilters);
+      console.log('📊 Received response:', { total: response?.total, count: response?.drafts?.length });
       setDrafts(response?.drafts || []);
     } catch (err) {
       setError('Failed to load drafts. Please try again.');
@@ -84,6 +201,40 @@ const DraftsPage: React.FC = () => {
     }
   };
 
+  const handleOpenFilters = () => {
+    // Copy current filters to temp filters when opening drawer
+    setTempFilters(filters);
+    setShowFilters(true);
+    // Load policy types if function is already set
+    if (filters.function) {
+      loadPolicyTypes(filters.function);
+    }
+  };
+
+  const handleApplyFilters = async () => {
+    // Apply the temp filters to actual filters
+    setFilters(tempFilters);
+    setShowFilters(false);
+    // Load drafts immediately with the new filters
+    await loadDrafts(tempFilters);
+  };
+
+  const handleClearFilters = async () => {
+    setTempFilters({});
+    setFilters({});
+    setSearchQuery('');
+    setShowFilters(false);
+    // Load all drafts without filters
+    await loadDrafts({});
+  };
+
+  const handleRemoveFilter = (key: keyof typeof filters) => {
+    setFilters(prev => {
+      const { [key]: _, ...rest } = prev;
+      return rest;
+    });
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -104,7 +255,9 @@ const DraftsPage: React.FC = () => {
     return formatDate(dateString);
   };
 
-  if (loading) {
+  const activeFilterCount = Object.keys(filters).length;
+
+  if (loading && drafts.length === 0) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
         <CircularProgress />
@@ -118,7 +271,7 @@ const DraftsPage: React.FC = () => {
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
         </Alert>
-        <Button onClick={loadDrafts}>Retry</Button>
+        <Button onClick={() => loadDrafts()}>Retry</Button>
       </Box>
     );
   }
@@ -167,16 +320,222 @@ const DraftsPage: React.FC = () => {
           </IconButton>
           <InputBase
             sx={{ ml: 1, flex: 1 }}
-            placeholder="Search drafts..."
+            placeholder="Search drafts by title..."
             inputProps={{ 'aria-label': 'search drafts' }}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
           />
           <Divider sx={{ height: 28, m: 0.5 }} orientation="vertical" />
-          <IconButton sx={{ p: 1 }}>
-            <FilterList />
-          </IconButton>
+          <Tooltip title="Filters">
+            <IconButton sx={{ p: 1 }} onClick={handleOpenFilters}>
+              <FilterList />
+              {activeFilterCount > 0 && (
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    top: 8,
+                    right: 8,
+                    bgcolor: 'primary.main',
+                    color: 'white',
+                    borderRadius: '50%',
+                    width: 16,
+                    height: 16,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '0.7rem',
+                    fontWeight: 600,
+                  }}
+                >
+                  {activeFilterCount}
+                </Box>
+              )}
+            </IconButton>
+          </Tooltip>
         </Paper>
+
+        {/* Active Filters */}
+        {activeFilterCount > 0 && (
+          <Box sx={{ mt: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+            {Object.entries(filters).map(([key, value]) => (
+              <Chip
+                key={key}
+                label={`${key}: ${value}`}
+                onDelete={() => handleRemoveFilter(key as keyof typeof filters)}
+                size="small"
+                sx={{ textTransform: 'capitalize' }}
+              />
+            ))}
+            <Button
+              size="small"
+              onClick={handleClearFilters}
+              sx={{ textTransform: 'none', minWidth: 'auto' }}
+            >
+              Clear All
+            </Button>
+          </Box>
+        )}
       </Box>
-      
+
+      {/* Filter Drawer */}
+      <Drawer
+        anchor="right"
+        open={showFilters}
+        onClose={() => setShowFilters(false)}
+        PaperProps={{
+          sx: { width: { xs: '100%', sm: 400 }, p: 3 }
+        }}
+      >
+        <Box>
+          <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+            <Typography variant="h6" fontWeight={600}>
+              Filter Drafts
+            </Typography>
+            <IconButton onClick={() => setShowFilters(false)}>
+              <Close />
+            </IconButton>
+          </Box>
+
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            {/* Country Filter */}
+            <Autocomplete
+              options={countries}
+              getOptionLabel={(option) => option.name}
+              value={countries.find(c => c.name === tempFilters.country) || null}
+              onChange={(_, newValue) => {
+                setTempFilters(prev => ({
+                  ...prev,
+                  country: newValue?.name || undefined,
+                  city: undefined // Reset city when country changes
+                }));
+              }}
+              renderInput={(params) => <TextField {...params} label="Country" />}
+            />
+
+            {/* City Filter */}
+            {tempFilters.country && (
+              <Autocomplete
+                options={State.getStatesOfCountry(
+                  countries.find(c => c.name === tempFilters.country)?.isoCode || ''
+                )}
+                getOptionLabel={(option) => option.name}
+                value={
+                  State.getStatesOfCountry(
+                    countries.find(c => c.name === tempFilters.country)?.isoCode || ''
+                  ).find(s => s.name === tempFilters.city) || null
+                }
+                onChange={(_, newValue) => {
+                  setTempFilters(prev => ({
+                    ...prev,
+                    city: newValue?.name || undefined
+                  }));
+                }}
+                renderInput={(params) => <TextField {...params} label="City/State" />}
+              />
+            )}
+
+            {/* Created By Filter */}
+            <TextField
+              label="Created By"
+              value={tempFilters.created_by || ''}
+              onChange={(e) => setTempFilters(prev => ({ ...prev, created_by: e.target.value || undefined }))}
+              placeholder="Enter user email or name"
+            />
+
+            {/* Industry Filter */}
+            <FormControl fullWidth>
+              <InputLabel>Industry</InputLabel>
+              <Select
+                value={tempFilters.industry || ''}
+                onChange={(e) => setTempFilters(prev => ({ ...prev, industry: e.target.value || undefined }))}
+                label="Industry"
+              >
+                <MenuItem value="">
+                  <em>All Industries</em>
+                </MenuItem>
+                {INDUSTRY_OPTIONS.map((industry) => (
+                  <MenuItem key={industry} value={industry}>
+                    {industry}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            {/* Function Filter */}
+            <FormControl fullWidth>
+              <InputLabel>Function</InputLabel>
+              <Select
+                value={tempFilters.function || ''}
+                onChange={(e) => {
+                  const funcValue = e.target.value || undefined;
+                  setTempFilters(prev => ({
+                    ...prev,
+                    function: funcValue,
+                    policy_type: undefined // Reset policy type when function changes
+                  }));
+                  if (funcValue) {
+                    loadPolicyTypes(funcValue);
+                  } else {
+                    setPolicyTypes([]);
+                  }
+                }}
+                label="Function"
+              >
+                <MenuItem value="">
+                  <em>All Functions</em>
+                </MenuItem>
+                {functions.map((func) => (
+                  <MenuItem key={func} value={func}>
+                    {func}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            {/* Policy Type Filter */}
+            {tempFilters.function && (
+              <FormControl fullWidth>
+                <InputLabel>Policy Type</InputLabel>
+                <Select
+                  value={tempFilters.policy_type || ''}
+                  onChange={(e) => setTempFilters(prev => ({ ...prev, policy_type: e.target.value || undefined }))}
+                  label="Policy Type"
+                >
+                  <MenuItem value="">
+                    <em>All Policy Types</em>
+                  </MenuItem>
+                  {policyTypes.map((type) => (
+                    <MenuItem key={type} value={type}>
+                      {type}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )}
+          </Box>
+
+          <Box sx={{ mt: 4, display: 'flex', gap: 2 }}>
+            <Button
+              fullWidth
+              variant="outlined"
+              onClick={handleClearFilters}
+            >
+              Clear All
+            </Button>
+            <Button
+              fullWidth
+              variant="contained"
+              onClick={handleApplyFilters}
+              sx={{
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              }}
+            >
+              Apply
+            </Button>
+          </Box>
+        </Box>
+      </Drawer>
+
       {drafts.length === 0 ? (
         <Paper
           elevation={0}
@@ -191,10 +550,10 @@ const DraftsPage: React.FC = () => {
         >
           <FolderOpen sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
           <Typography variant="h5" gutterBottom>
-            No drafts yet
+            {activeFilterCount > 0 ? 'No drafts match your filters' : 'No drafts yet'}
           </Typography>
           <Typography color="text.secondary" gutterBottom>
-            Create your first policy draft to get started
+            {activeFilterCount > 0 ? 'Try adjusting your search or filters' : 'Create your first policy draft to get started'}
           </Typography>
           <Button
             variant="contained"

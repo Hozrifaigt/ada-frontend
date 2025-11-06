@@ -34,6 +34,21 @@ import { Country, State } from 'country-state-city';
 import { draftService } from '../services/draftService';
 import { CreateDraftRequest } from '../types/draft.types';
 
+// Industry options
+const INDUSTRY_OPTIONS = [
+  'Manufacturing',
+  'Telecom',
+  'Technology',
+  'Media',
+  'Government',
+  'Healthcare',
+  'Hospitality',
+  'Finance',
+  'Fund',
+  'Banking',
+  'Family Conglomerate'
+];
+
 const NewDraftPage: React.FC = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -436,18 +451,29 @@ const NewDraftPage: React.FC = () => {
                   </Grid>
 
                   <Grid item xs={12} md={6}>
-                    <TextField
-                      required
-                      fullWidth
-                      label="Industry"
-                      value={formData.client_metadata.industry}
-                      onChange={handleChange('client_metadata.industry')}
-                      placeholder="e.g., Healthcare, Finance, Technology"
-                      helperText="Specify the industry or sector"
-                      InputProps={{
-                        sx: { backgroundColor: 'background.paper' }
-                      }}
-                    />
+                    <FormControl fullWidth required>
+                      <InputLabel>Industry</InputLabel>
+                      <Select
+                        value={formData.client_metadata.industry}
+                        onChange={(e) => {
+                          setFormData(prev => ({
+                            ...prev,
+                            client_metadata: {
+                              ...prev.client_metadata,
+                              industry: e.target.value
+                            }
+                          }));
+                        }}
+                        label="Industry"
+                        sx={{ backgroundColor: 'background.paper' }}
+                      >
+                        {INDUSTRY_OPTIONS.map((industry) => (
+                          <MenuItem key={industry} value={industry}>
+                            {industry}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
                   </Grid>
 
                   <Grid item xs={12} md={6}>

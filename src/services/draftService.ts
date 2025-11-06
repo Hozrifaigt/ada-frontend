@@ -80,9 +80,33 @@ export const draftService = {
     return response.data;
   },
 
-  async getDrafts(): Promise<{ drafts: DraftSummary[]; total: number }> {
+  async getDrafts(filters?: {
+    title?: string;
+    country?: string;
+    city?: string;
+    created_by?: string;
+    industry?: string;
+    function?: string;
+    policy_type?: string;
+  }): Promise<{ drafts: DraftSummary[]; total: number }> {
     try {
-      const response = await apiClient.get('/api/v1/drafts/');
+      // Build query string from filters
+      const params = new URLSearchParams();
+      if (filters) {
+        Object.entries(filters).forEach(([key, value]) => {
+          if (value) {
+            params.append(key, value);
+          }
+        });
+      }
+
+      const queryString = params.toString();
+      const url = queryString ? `/api/v1/drafts/?${queryString}` : '/api/v1/drafts/';
+
+      console.log('🌐 API Request URL:', url);
+      console.log('🔧 Filters being sent:', filters);
+      const response = await apiClient.get(url);
+      console.log('✅ API Response:', response.data);
       return response.data || { drafts: [], total: 0 };
     } catch (error) {
       console.error('Error fetching drafts:', error);

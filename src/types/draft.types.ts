@@ -58,6 +58,8 @@ export interface DraftSummary {
   modified_at: string;
   most_similar_policy_id?: string;
   client_metadata?: ClientMetadata;
+  function?: string;
+  policy_type?: string;
 }
 
 export interface CreateDraftRequest {
