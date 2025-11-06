@@ -15,6 +15,7 @@ import DraftEditPage from './pages/DraftEditPage';
 import NewDraftPage from './pages/NewDraftPage';
 import ProfilePage from './pages/ProfilePage';
 import HelpPage from './pages/HelpPage';
+import AdminPage from './pages/AdminPage';
 import NotFoundPage from './pages/NotFoundPage';
 
 const queryClient = new QueryClient({
@@ -97,6 +98,16 @@ function App() {
                   <PrivateRoute>
                     <AuthenticatedLayout>
                       <HelpPage />
+                    </AuthenticatedLayout>
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/admin"
+                element={
+                  <PrivateRoute>
+                    <AuthenticatedLayout>
+                      <AdminPage />
                     </AuthenticatedLayout>
                   </PrivateRoute>
                 }

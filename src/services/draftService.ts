@@ -12,7 +12,8 @@ import {
   TOCTopic,
   TOCChatResponse,
   TOCOperation,
-  TOCConfirmResponse
+  TOCConfirmResponse,
+  GetPolicyTypesResponse
 } from '../types/draft.types';
 
 // Create a special client with longer timeout for draft initialization and content generation
@@ -180,6 +181,18 @@ export const draftService = {
         current_toc: currentToc
       }
     );
+    return response.data;
+  },
+
+  async getPolicyTypes(functionName: string): Promise<GetPolicyTypesResponse> {
+    const response = await apiClient.get(`/api/v1/drafts/policy-templates`, {
+      params: { function: functionName }
+    });
+    return response.data;
+  },
+
+  async getFunctions(): Promise<GetPolicyTypesResponse> {
+    const response = await apiClient.get(`/api/v1/drafts/functions`);
     return response.data;
   },
 };

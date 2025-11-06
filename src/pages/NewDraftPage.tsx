@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Paper,
@@ -13,20 +13,12 @@ import {
   Divider,
   Container,
   CircularProgress,
-  Chip,
-  LinearProgress,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
   FormControl,
   FormLabel,
-  RadioGroup,
-  Radio,
-  FormControlLabel,
   Select,
   MenuItem,
   InputLabel,
+  Slider,
 } from '@mui/material';
 import {
   Save,
@@ -36,43 +28,117 @@ import {
   CheckCircleOutline,
   EditNote,
   AutoAwesome,
-  Warning,
-  CheckCircle,
-  Info,
-  Error as ErrorIcon,
-  Lightbulb
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import { Country, State } from 'country-state-city';
 import { draftService } from '../services/draftService';
-import { CreateDraftRequest, ValidateDraftResponse } from '../types/draft.types';
+import { CreateDraftRequest } from '../types/draft.types';
 
 const NewDraftPage: React.FC = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [validating, setValidating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [validationResult, setValidationResult] = useState<ValidateDraftResponse | null>(null);
-  const [showImprovedDescription, setShowImprovedDescription] = useState(false);
+
+  // Get UAE as default country
+  const uaeCountry = Country.getAllCountries().find(c => c.isoCode === 'AE');
+  const [selectedCountryCode, setSelectedCountryCode] = useState<string>(uaeCountry?.isoCode || 'AE');
+
   const [formData, setFormData] = useState<CreateDraftRequest>({
     title: '',
     description: '',
     client_metadata: {
       name: '',
-      country: '',
+      country: uaeCountry?.name || 'United Arab Emirates',
+      city: '',
       industry: '',
     },
-    unique_requirements: '',
-    regulations: ['UAE Labor Law'],
-    detail_level: 'light',
+    function: '', // Will be set once functions are loaded
+    policy_type: '',
+    client_specific_requests: '',
+    sector_specific_comments: '',
+    regulations: 'UAE Labor Law',
+    detail_level: 3,
   });
 
-  const handleChange = (field: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
-    // Clear validation when user modifies the form
-    if (field === 'description' && validationResult) {
-      setValidationResult(null);
-      setShowImprovedDescription(false);
-    }
+  const [functions, setFunctions] = useState<string[]>([]);
+  const [loadingFunctions, setLoadingFunctions] = useState(false);
+  const [policyTypes, setPolicyTypes] = useState<string[]>([]);
+  const [loadingPolicyTypes, setLoadingPolicyTypes] = useState(false);
 
+  // Get all countries and states (for UAE, these are the emirates)
+  // Filter out Israel from the country list
+  const countries = Country.getAllCountries().filter(country => country.isoCode !== 'IL');
+  const states = State.getStatesOfCountry(selectedCountryCode) || [];
+
+  // Fetch available functions on mount
+  useEffect(() => {
+    const fetchFunctions = async () => {
+      setLoadingFunctions(true);
+      try {
+        const response = await draftService.getFunctions();
+        if (response.policy_types.length === 0) {
+          // Fallback if no templates uploaded yet
+          setFunctions(['HR']);
+        } else {
+          setFunctions(response.policy_types);
+        }
+      } catch (err) {
+        console.error('Failed to fetch functions:', err);
+        setFunctions(['HR']); // Fallback
+      } finally {
+        setLoadingFunctions(false);
+      }
+    };
+
+    fetchFunctions();
+  }, []);
+
+  // Set default function once functions are loaded
+  useEffect(() => {
+    if (functions.length > 0 && !formData.function) {
+      setFormData(prev => ({ ...prev, function: functions[0] }));
+    }
+  }, [functions]);
+
+  // Fetch policy types when function changes
+  useEffect(() => {
+    const fetchPolicyTypes = async () => {
+      if (!formData.function) return;
+
+      setLoadingPolicyTypes(true);
+      try {
+        const response = await draftService.getPolicyTypes(formData.function);
+        // If no policy types from backend, use mock data for testing
+        if (response.policy_types.length === 0) {
+          setPolicyTypes([
+            'Recruitment and Selection Policy',
+            'Employee Onboarding Policy',
+            'Performance Management Policy',
+            'Leave and Absence Policy',
+            'Compensation and Benefits Policy'
+          ]);
+        } else {
+          setPolicyTypes(response.policy_types);
+        }
+      } catch (err) {
+        console.error('Failed to fetch policy types:', err);
+        // Fallback to mock data if API fails
+        setPolicyTypes([
+          'Recruitment and Selection Policy',
+          'Employee Onboarding Policy',
+          'Performance Management Policy',
+          'Leave and Absence Policy',
+          'Compensation and Benefits Policy'
+        ]);
+      } finally {
+        setLoadingPolicyTypes(false);
+      }
+    };
+
+    fetchPolicyTypes();
+  }, [formData.function]);
+
+  const handleChange = (field: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
     if (field.includes('.')) {
       const [parent, child] = field.split('.');
       setFormData({
@@ -90,56 +156,34 @@ const NewDraftPage: React.FC = () => {
     }
   };
 
-  const validateDraft = async () => {
-    setValidating(true);
-    setError(null);
-
-    try {
-      const result = await draftService.validateDraft(formData);
-      setValidationResult(result);
-
-      if (!result.is_valid && result.improved_description) {
-        setShowImprovedDescription(true);
-      }
-
-      return result;
-    } catch (err: any) {
-      setError('Failed to validate draft. Please try again.');
-      console.error('Error validating draft:', err);
-      return null;
-    } finally {
-      setValidating(false);
+  const handleCountryChange = (countryIsoCode: string) => {
+    const country = countries.find(c => c.isoCode === countryIsoCode);
+    if (country) {
+      setSelectedCountryCode(countryIsoCode);
+      setFormData({
+        ...formData,
+        client_metadata: {
+          ...formData.client_metadata,
+          country: country.name,
+          city: '', // Clear city when country changes
+        },
+      });
     }
   };
 
-  const useImprovedDescription = () => {
-    if (validationResult?.improved_description) {
-      setFormData({
-        ...formData,
-        description: validationResult.improved_description
-      });
-      setShowImprovedDescription(false);
-      setValidationResult(null);
-    }
+  const handleCityChange = (stateName: string) => {
+    setFormData({
+      ...formData,
+      client_metadata: {
+        ...formData.client_metadata,
+        city: stateName,
+      },
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-
-    // First validate the draft
-    const validation = await validateDraft();
-
-    if (!validation) {
-      return; // Validation failed with error
-    }
-
-    if (!validation.is_valid) {
-      // Don't proceed if validation failed
-      setError('Please fix the issues with your description before creating the draft.');
-      return;
-    }
-
     setLoading(true);
 
     try {
@@ -157,14 +201,27 @@ const NewDraftPage: React.FC = () => {
   };
 
   const isFormValid = () => {
-    return (
-      formData.title.trim() !== '' &&
-      formData.description.trim() !== '' &&
-      formData.client_metadata.name.trim() !== '' &&
-      formData.client_metadata.country.trim() !== '' &&
-      formData.client_metadata.industry.trim() !== '' &&
-      formData.regulations.length > 0
-    );
+    const validations = {
+      title: formData.title.trim() !== '',
+      name: formData.client_metadata.name.trim() !== '',
+      country: formData.client_metadata.country.trim() !== '',
+      city: formData.client_metadata.city.trim() !== '',
+      industry: formData.client_metadata.industry.trim() !== '',
+      function: formData.function.trim() !== '',
+      policy_type: formData.policy_type.trim() !== '',
+      regulations: formData.regulations.trim() !== ''
+    };
+
+    // Debug: Log which fields are invalid
+    const invalidFields = Object.entries(validations)
+      .filter(([_, isValid]) => !isValid)
+      .map(([field]) => field);
+
+    if (invalidFields.length > 0) {
+      console.log('Invalid fields:', invalidFields);
+    }
+
+    return Object.values(validations).every(v => v);
   };
 
   return (
@@ -225,159 +282,58 @@ const NewDraftPage: React.FC = () => {
                     />
                   </Grid>
 
-                  <Grid item xs={12}>
-                    <Box>
-                      <TextField
-                        required
-                        fullWidth
-                        multiline
-                        rows={4}
-                        label="Description"
-                        value={formData.description}
-                        onChange={handleChange('description')}
-                        placeholder="Provide a detailed description of what this policy covers"
-                        helperText={validationResult && !validationResult.is_valid ?
-                          "Description needs improvement - see issues below" :
-                          "Include the purpose, scope, and key objectives of the policy"}
-                        error={validationResult ? !validationResult.is_valid : false}
-                        InputProps={{
-                          sx: { backgroundColor: 'background.paper' }
-                        }}
-                      />
+                  <Grid item xs={12} md={6}>
+                    <FormControl fullWidth required>
+                      <InputLabel>Function</InputLabel>
+                      <Select
+                        value={formData.function}
+                        onChange={(e) => setFormData({ ...formData, function: e.target.value, policy_type: '' })}
+                        label="Function"
+                        disabled={loadingFunctions || functions.length === 0}
+                        sx={{ backgroundColor: 'background.paper' }}
+                      >
+                        {loadingFunctions ? (
+                          <MenuItem disabled>
+                            <CircularProgress size={20} sx={{ mr: 1 }} /> Loading functions...
+                          </MenuItem>
+                        ) : functions.length === 0 ? (
+                          <MenuItem disabled>No functions available</MenuItem>
+                        ) : (
+                          functions.map((func) => (
+                            <MenuItem key={func} value={func}>
+                              {func}
+                            </MenuItem>
+                          ))
+                        )}
+                      </Select>
+                    </FormControl>
+                  </Grid>
 
-                      {/* Validation Feedback */}
-                      {validationResult && (
-                        <Box sx={{ mt: 2 }}>
-                          {/* Quality Score */}
-                          <Box sx={{ mb: 2 }}>
-                            <Box display="flex" alignItems="center" justifyContent="space-between" mb={1}>
-                              <Typography variant="body2" color="text.secondary">
-                                Description Quality (minimum 50% required)
-                              </Typography>
-                              <Box display="flex" alignItems="center" gap={1}>
-                                {validationResult.description_quality_score < 50 && (
-                                  <Chip
-                                    size="small"
-                                    label="Below Minimum"
-                                    color="error"
-                                    variant="outlined"
-                                  />
-                                )}
-                                <Chip
-                                  size="small"
-                                  label={`${validationResult.description_quality_score}%`}
-                                  color={validationResult.description_quality_score >= 60 ? "success" :
-                                         validationResult.description_quality_score >= 50 ? "warning" : "error"}
-                                />
-                              </Box>
-                            </Box>
-                            <LinearProgress
-                              variant="determinate"
-                              value={validationResult.description_quality_score}
-                              sx={{
-                                height: 8,
-                                borderRadius: 4,
-                                backgroundColor: 'grey.300',
-                                '& .MuiLinearProgress-bar': {
-                                  borderRadius: 4,
-                                  backgroundColor: validationResult.description_quality_score >= 60 ? 'success.main' :
-                                                   validationResult.description_quality_score >= 50 ? 'warning.main' : 'error.main'
-                                }
-                              }}
-                            />
-                            <Box display="flex" justifyContent="space-between" mt={0.5}>
-                              <Typography variant="caption" color="text.secondary">
-                                Poor (0-49%)
-                              </Typography>
-                              <Typography variant="caption" color="text.secondary">
-                                Acceptable (50-69%)
-                              </Typography>
-                              <Typography variant="caption" color="text.secondary">
-                                Good (70%+)
-                              </Typography>
-                            </Box>
-                          </Box>
-
-                          {/* Issues */}
-                          {validationResult.issues.length > 0 && (
-                            <Alert severity="error" sx={{ mb: 2 }}>
-                              <Typography variant="subtitle2" gutterBottom>
-                                <strong>Issues Found:</strong>
-                              </Typography>
-                              <List dense sx={{ py: 0 }}>
-                                {validationResult.issues.map((issue, index) => (
-                                  <ListItem key={index} sx={{ py: 0, px: 0 }}>
-                                    <ListItemIcon sx={{ minWidth: 28 }}>
-                                      <ErrorIcon fontSize="small" />
-                                    </ListItemIcon>
-                                    <ListItemText primary={issue} />
-                                  </ListItem>
-                                ))}
-                              </List>
-                            </Alert>
-                          )}
-
-                          {/* Suggestions */}
-                          {validationResult.suggestions.length > 0 && (
-                            <Alert severity="info" sx={{ mb: 2 }}>
-                              <Typography variant="subtitle2" gutterBottom>
-                                <strong>Suggestions:</strong>
-                              </Typography>
-                              <List dense sx={{ py: 0 }}>
-                                {validationResult.suggestions.map((suggestion, index) => (
-                                  <ListItem key={index} sx={{ py: 0, px: 0 }}>
-                                    <ListItemIcon sx={{ minWidth: 28 }}>
-                                      <Lightbulb fontSize="small" />
-                                    </ListItemIcon>
-                                    <ListItemText primary={suggestion} />
-                                  </ListItem>
-                                ))}
-                              </List>
-                            </Alert>
-                          )}
-
-                          {/* Improved Description */}
-                          {showImprovedDescription && validationResult.improved_description && (
-                            <Alert
-                              severity="success"
-                              sx={{ mb: 2 }}
-                              action={
-                                <Button
-                                  color="inherit"
-                                  size="small"
-                                  onClick={useImprovedDescription}
-                                  startIcon={<AutoAwesome />}
-                                >
-                                  Use This
-                                </Button>
-                              }
-                            >
-                              <Typography variant="subtitle2" gutterBottom>
-                                <strong>Suggested Improved Description:</strong>
-                              </Typography>
-                              <Typography variant="body2" sx={{ mt: 1, fontStyle: 'italic' }}>
-                                "{validationResult.improved_description}"
-                              </Typography>
-                            </Alert>
-                          )}
-                        </Box>
-                      )}
-
-                      {/* Manual Validation Button */}
-                      {formData.description.trim().length > 0 && !validationResult && (
-                        <Box sx={{ mt: 2 }}>
-                          <Button
-                            variant="outlined"
-                            size="small"
-                            onClick={validateDraft}
-                            disabled={validating}
-                            startIcon={validating ? <CircularProgress size={16} /> : <CheckCircle />}
-                          >
-                            {validating ? 'Validating...' : 'Check Description Quality'}
-                          </Button>
-                        </Box>
-                      )}
-                    </Box>
+                  <Grid item xs={12} md={6}>
+                    <FormControl fullWidth required>
+                      <InputLabel>Policy Type</InputLabel>
+                      <Select
+                        value={formData.policy_type}
+                        onChange={(e) => setFormData({ ...formData, policy_type: e.target.value })}
+                        label="Policy Type"
+                        disabled={loadingPolicyTypes || policyTypes.length === 0}
+                        sx={{ backgroundColor: 'background.paper' }}
+                      >
+                        {loadingPolicyTypes ? (
+                          <MenuItem disabled>
+                            <CircularProgress size={20} sx={{ mr: 1 }} /> Loading policies...
+                          </MenuItem>
+                        ) : policyTypes.length === 0 ? (
+                          <MenuItem disabled>No policy types available</MenuItem>
+                        ) : (
+                          policyTypes.map((type) => (
+                            <MenuItem key={type} value={type}>
+                              {type}
+                            </MenuItem>
+                          ))
+                        )}
+                      </Select>
+                    </FormControl>
                   </Grid>
 
                   <Grid item xs={12}>
@@ -385,11 +341,27 @@ const NewDraftPage: React.FC = () => {
                       fullWidth
                       multiline
                       rows={3}
-                      label="Unique Client Requirements"
-                      value={formData.unique_requirements}
-                      onChange={handleChange('unique_requirements')}
+                      label="Client Specific Requests"
+                      value={formData.client_specific_requests}
+                      onChange={handleChange('client_specific_requests')}
                       placeholder="Describe any specific requirements or customizations for this client"
                       helperText="Optional: Add any unique business needs, industry-specific requirements, or custom policies"
+                      InputProps={{
+                        sx: { backgroundColor: 'background.paper' }
+                      }}
+                    />
+                  </Grid>
+
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      multiline
+                      rows={3}
+                      label="Sector Specific Comments"
+                      value={formData.sector_specific_comments}
+                      onChange={handleChange('sector_specific_comments')}
+                      placeholder="Add any sector-specific considerations or requirements"
+                      helperText="Optional: Include any sector-specific regulations, standards, or best practices"
                       InputProps={{
                         sx: { backgroundColor: 'background.paper' }
                       }}
@@ -400,8 +372,8 @@ const NewDraftPage: React.FC = () => {
                     <FormControl fullWidth required>
                       <InputLabel>Regulations</InputLabel>
                       <Select
-                        value={formData.regulations[0] || ''}
-                        onChange={(e) => setFormData({ ...formData, regulations: [e.target.value] })}
+                        value={formData.regulations}
+                        onChange={(e) => setFormData({ ...formData, regulations: e.target.value })}
                         label="Regulations"
                         sx={{ backgroundColor: 'background.paper' }}
                       >
@@ -411,18 +383,28 @@ const NewDraftPage: React.FC = () => {
                   </Grid>
 
                   <Grid item xs={12} md={6}>
-                    <FormControl component="fieldset">
-                      <FormLabel component="legend" sx={{ mb: 1 }}>
+                    <FormControl fullWidth>
+                      <FormLabel sx={{ mb: 2 }}>
                         Level of Details
                       </FormLabel>
-                      <RadioGroup
-                        row
-                        value={formData.detail_level}
-                        onChange={(e) => setFormData({ ...formData, detail_level: e.target.value as 'light' | 'deep' })}
-                      >
-                        <FormControlLabel value="light" control={<Radio />} label="Light" />
-                        <FormControlLabel value="deep" control={<Radio />} label="Deep" />
-                      </RadioGroup>
+                      <Box sx={{ px: 2 }}>
+                        <Slider
+                          value={formData.detail_level}
+                          onChange={(_, value) => setFormData({ ...formData, detail_level: value as number })}
+                          min={1}
+                          max={5}
+                          step={1}
+                          marks={[
+                            { value: 1, label: '1 - Light' },
+                            { value: 2, label: '2' },
+                            { value: 3, label: '3' },
+                            { value: 4, label: '4' },
+                            { value: 5, label: '5 - Heavy' }
+                          ]}
+                          valueLabelDisplay="auto"
+                          sx={{ mt: 1 }}
+                        />
+                      </Box>
                     </FormControl>
                   </Grid>
                 </Grid>
@@ -469,17 +451,44 @@ const NewDraftPage: React.FC = () => {
                   </Grid>
 
                   <Grid item xs={12} md={6}>
-                    <TextField
-                      required
-                      fullWidth
-                      label="Country"
-                      value={formData.client_metadata.country}
-                      onChange={handleChange('client_metadata.country')}
-                      placeholder="e.g., United Arab Emirates"
-                      InputProps={{
-                        sx: { backgroundColor: 'background.paper' }
-                      }}
-                    />
+                    <FormControl fullWidth required>
+                      <InputLabel>Country</InputLabel>
+                      <Select
+                        value={selectedCountryCode}
+                        onChange={(e) => handleCountryChange(e.target.value)}
+                        label="Country"
+                        sx={{ backgroundColor: 'background.paper' }}
+                      >
+                        {countries.map((country) => (
+                          <MenuItem key={country.isoCode} value={country.isoCode}>
+                            {country.name}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+
+                  <Grid item xs={12} md={6}>
+                    <FormControl fullWidth required>
+                      <InputLabel>City / Emirate</InputLabel>
+                      <Select
+                        value={formData.client_metadata.city}
+                        onChange={(e) => handleCityChange(e.target.value)}
+                        label="City / Emirate"
+                        disabled={states.length === 0}
+                        sx={{ backgroundColor: 'background.paper' }}
+                      >
+                        {states.length === 0 ? (
+                          <MenuItem disabled>No regions available</MenuItem>
+                        ) : (
+                          states.map((state) => (
+                            <MenuItem key={state.isoCode} value={state.name}>
+                              {state.name}
+                            </MenuItem>
+                          ))
+                        )}
+                      </Select>
+                    </FormControl>
                   </Grid>
                 </Grid>
               </Box>
@@ -505,11 +514,11 @@ const NewDraftPage: React.FC = () => {
                     type="submit"
                     variant="contained"
                     size="large"
-                    startIcon={loading || validating ? <CircularProgress size={20} color="inherit" /> : <Save />}
-                    disabled={loading || validating || !isFormValid()}
+                    startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <Save />}
+                    disabled={loading || !isFormValid()}
                     sx={{ minWidth: 150 }}
                   >
-                    {validating ? 'Validating...' : loading ? 'Creating...' : 'Create Draft'}
+                    {loading ? 'Creating...' : 'Create Draft'}
                   </Button>
                 </Box>
               </Box>

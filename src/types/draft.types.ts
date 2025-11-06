@@ -1,6 +1,7 @@
 export interface ClientMetadata {
   name: string;
   country: string;
+  city: string;
   industry: string;
 }
 
@@ -61,20 +62,26 @@ export interface DraftSummary {
 
 export interface CreateDraftRequest {
   title: string;
-  description: string;
+  description?: string;
   client_metadata: ClientMetadata;
-  unique_requirements?: string;
-  regulations: string[];
-  detail_level: 'light' | 'deep';
+  function: string;
+  policy_type: string;
+  client_specific_requests?: string;
+  sector_specific_comments?: string;
+  regulations: string;
+  detail_level: number;
 }
 
 export interface ValidateDraftRequest {
   title: string;
-  description: string;
+  description?: string;
   client_metadata: ClientMetadata;
-  unique_requirements?: string;
-  regulations: string[];
-  detail_level: 'light' | 'deep';
+  function: string;
+  policy_type: string;
+  client_specific_requests?: string;
+  sector_specific_comments?: string;
+  regulations: string;
+  detail_level: number;
 }
 
 export interface ValidateDraftResponse {
@@ -162,4 +169,19 @@ export interface TOCConfirmResponse {
   updated_toc: TOCTopic[];
   message: string;
   undo_available: boolean;
+}
+
+// Policy Template Types
+export interface GetPolicyTypesResponse {
+  policy_types: string[];
+  total: number;
+}
+
+export interface CreateDraftFromTemplateRequest {
+  template_id: string;
+  title: string;
+  client_metadata: ClientMetadata;
+  client_specific_requests?: string;
+  regulations: string;
+  detail_level: number;
 }
