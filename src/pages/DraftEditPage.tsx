@@ -3767,12 +3767,30 @@ const DraftEditPage: React.FC = () => {
 
       <TabPanel value={tabValue} index={0}>
         <Box sx={{ maxWidth: '1200px' }}>
-          <Typography variant="h5" fontWeight={600} gutterBottom sx={{ color: '#1a202c', mb: 3 }}>
-            Draft Overview
-          </Typography>
+          <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+            <Typography variant="h5" fontWeight={600} sx={{ color: '#1a202c' }}>
+              Draft Overview
+            </Typography>
+            <Button
+              variant="contained"
+              startIcon={<Edit />}
+              onClick={() => navigate('/drafts/new', { state: { editDraft: draft } })}
+              sx={{
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                textTransform: 'none',
+                px: 3,
+                fontWeight: 600,
+                '&:hover': {
+                  background: 'linear-gradient(135deg, #5569d8 0%, #6a4291 100%)',
+                },
+              }}
+            >
+              Edit Metadata
+            </Button>
+          </Box>
 
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3 }}>
-            {/* Document Information */}
+            {/* Policy Details & Requirements */}
             <Paper
               elevation={0}
               sx={{
@@ -3780,6 +3798,7 @@ const DraftEditPage: React.FC = () => {
                 borderRadius: 3,
                 border: '1px solid #e2e8f0',
                 background: '#fafbfc',
+                gridColumn: { xs: '1', md: '1 / -1' },
               }}
             >
               <Box display="flex" alignItems="center" gap={2} mb={3}>
@@ -3797,28 +3816,106 @@ const DraftEditPage: React.FC = () => {
                   <Article sx={{ color: 'white', fontSize: 24 }} />
                 </Box>
                 <Typography variant="h6" fontWeight={600} sx={{ color: '#2d3748' }}>
-                  Document Details
+                  Policy Details & Requirements
                 </Typography>
               </Box>
 
-              <Box sx={{ space: 2 }}>
-                <Box mb={2}>
-                  <Typography variant="caption" sx={{ color: '#718096', fontWeight: 500 }}>
-                    TITLE
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr 1fr 1fr' }, gap: 3, mb: 3 }}>
+                {/* Title */}
+                <Box>
+                  <Typography variant="caption" sx={{ color: '#718096', fontWeight: 500, textTransform: 'uppercase' }}>
+                    Title
                   </Typography>
-                  <Typography variant="body1" sx={{ color: '#2d3748', fontWeight: 600 }}>
+                  <Typography variant="body2" sx={{ color: '#2d3748', fontWeight: 600, mt: 0.5 }}>
                     {draft.metadata.title}
                   </Typography>
                 </Box>
-                <Box mb={2}>
-                  <Typography variant="caption" sx={{ color: '#718096', fontWeight: 500 }}>
-                    DESCRIPTION
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: '#4a5568', lineHeight: 1.6 }}>
-                    {draft.metadata.description}
-                  </Typography>
-                </Box>
+
+                {/* Policy Function */}
+                {draft.metadata.function && (
+                  <Box>
+                    <Typography variant="caption" sx={{ color: '#718096', fontWeight: 500, textTransform: 'uppercase' }}>
+                      Function
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: '#667eea', fontWeight: 600, mt: 0.5 }}>
+                      {draft.metadata.function}
+                    </Typography>
+                  </Box>
+                )}
+
+                {/* Policy Type */}
+                {draft.metadata.policy_type && (
+                  <Box>
+                    <Typography variant="caption" sx={{ color: '#718096', fontWeight: 500, textTransform: 'uppercase' }}>
+                      Type
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: '#667eea', fontWeight: 600, mt: 0.5 }}>
+                      {draft.metadata.policy_type}
+                    </Typography>
+                  </Box>
+                )}
+
+                {/* Regulations */}
+                {draft.metadata.regulations && (
+                  <Box>
+                    <Typography variant="caption" sx={{ color: '#718096', fontWeight: 500, textTransform: 'uppercase' }}>
+                      Regulations
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: '#2d3748', fontWeight: 600, mt: 0.5 }}>
+                      {draft.metadata.regulations}
+                    </Typography>
+                  </Box>
+                )}
+
+                {/* Detail Level */}
+                {draft.metadata.detail_level && (
+                  <Box>
+                    <Typography variant="caption" sx={{ color: '#718096', fontWeight: 500, textTransform: 'uppercase' }}>
+                      Detail Level
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: '#2d3748', fontWeight: 600, mt: 0.5 }}>
+                      Level {draft.metadata.detail_level} of 5
+                    </Typography>
+                  </Box>
+                )}
               </Box>
+
+              {/* Long text fields */}
+              {(draft.metadata.client_specific_requests || draft.metadata.sector_specific_comments) && (
+                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr auto 1fr' }, gap: 3, pt: 2, borderTop: '1px solid #e2e8f0' }}>
+                  {draft.metadata.client_specific_requests && (
+                    <Box>
+                      <Typography variant="caption" sx={{ color: '#718096', fontWeight: 500, textTransform: 'uppercase' }}>
+                        Client Specific Requirements
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: '#4a5568', lineHeight: 1.6, mt: 0.5 }}>
+                        {draft.metadata.client_specific_requests}
+                      </Typography>
+                    </Box>
+                  )}
+
+                  {/* Vertical divider - only show on desktop and when both fields exist */}
+                  {draft.metadata.client_specific_requests && draft.metadata.sector_specific_comments && (
+                    <Box sx={{
+                      display: { xs: 'none', md: 'block' },
+                      width: '1px',
+                      bgcolor: '#e2e8f0',
+                      alignSelf: 'stretch'
+                    }} />
+                  )}
+
+                  {draft.metadata.sector_specific_comments && (
+                    <Box>
+                      <Typography variant="caption" sx={{ color: '#718096', fontWeight: 500, textTransform: 'uppercase' }}>
+                        Sector Comments
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: '#4a5568', lineHeight: 1.6, mt: 0.5 }}>
+                        {draft.metadata.sector_specific_comments}
+                      </Typography>
+                    </Box>
+                  )}
+                </Box>
+              )}
             </Paper>
 
             {/* Client Information */}
@@ -3869,13 +3966,30 @@ const DraftEditPage: React.FC = () => {
                     </Typography>
                   </Box>
                 )}
-                <Box mb={2}>
-                  <Box display="flex" alignItems="center" gap={1}>
-                    <LocationOn sx={{ fontSize: 18, color: '#667eea' }} />
-                    <Typography variant="body2" sx={{ color: '#4a5568', fontWeight: 500 }}>
-                      {draft.metadata.client_metadata.country}
+
+                {/* Country and City side by side */}
+                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+                  <Box>
+                    <Typography variant="caption" sx={{ color: '#718096', fontWeight: 500 }}>
+                      COUNTRY
                     </Typography>
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <LocationOn sx={{ fontSize: 18, color: '#667eea' }} />
+                      <Typography variant="body2" sx={{ color: '#4a5568', fontWeight: 500 }}>
+                        {draft.metadata.client_metadata.country}
+                      </Typography>
+                    </Box>
                   </Box>
+                  {draft.metadata.client_metadata.city && (
+                    <Box>
+                      <Typography variant="caption" sx={{ color: '#718096', fontWeight: 500 }}>
+                        CITY
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: '#4a5568', fontWeight: 500 }}>
+                        {draft.metadata.client_metadata.city}
+                      </Typography>
+                    </Box>
+                  )}
                 </Box>
               </Box>
             </Paper>
@@ -3888,7 +4002,6 @@ const DraftEditPage: React.FC = () => {
                 borderRadius: 3,
                 border: '1px solid #e2e8f0',
                 background: '#fafbfc',
-                gridColumn: { xs: '1', md: '1 / -1' },
               }}
             >
               <Box display="flex" alignItems="center" gap={2} mb={3}>

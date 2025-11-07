@@ -39,8 +39,14 @@ export interface DraftMetadata {
   created_at: string;
   modified_at: string;
   client_metadata: ClientMetadata;
+  function: string;
+  policy_type: string;
   most_similar_policy_id?: string;
   toc_source?: 'similarity_search' | 'ai_generated';
+  client_specific_requests?: string;
+  sector_specific_comments?: string;
+  regulations?: string;
+  detail_level?: number;
 }
 
 export interface Draft {

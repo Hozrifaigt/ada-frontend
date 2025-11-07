@@ -103,10 +103,7 @@ export const draftService = {
       const queryString = params.toString();
       const url = queryString ? `/api/v1/drafts/?${queryString}` : '/api/v1/drafts/';
 
-      console.log('🌐 API Request URL:', url);
-      console.log('🔧 Filters being sent:', filters);
       const response = await apiClient.get(url);
-      console.log('✅ API Response:', response.data);
       return response.data || { drafts: [], total: 0 };
     } catch (error) {
       console.error('Error fetching drafts:', error);
@@ -122,6 +119,10 @@ export const draftService = {
 
   async updateTOC(id: string, data: UpdateTOCRequest): Promise<void> {
     await apiClient.put(`/api/v1/drafts/${id}/toc`, data);
+  },
+
+  async updateDraftMetadata(id: string, data: CreateDraftRequest): Promise<void> {
+    await apiClient.put(`/api/v1/drafts/${id}/metadata`, data);
   },
 
   async generateContent(

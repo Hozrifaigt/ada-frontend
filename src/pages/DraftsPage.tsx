@@ -35,6 +35,10 @@ import {
   FolderOpen,
   CalendarToday,
   Close,
+  Work,
+  Description as DescriptionIcon,
+  Public,
+  Apartment,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { Country, State } from 'country-state-city';
@@ -88,7 +92,6 @@ const DraftsPage: React.FC = () => {
 
   useEffect(() => {
     // Load initial data on mount only once
-    console.log('🚀 Initial mount - loading functions and drafts');
     loadFunctions();
     loadDrafts();
     initialLoadDone.current = true;
@@ -126,7 +129,6 @@ const DraftsPage: React.FC = () => {
     }
 
     // Reload drafts whenever filters change after initial mount
-    console.log('🔄 Filters changed, reloading drafts');
     loadDrafts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
@@ -160,9 +162,7 @@ const DraftsPage: React.FC = () => {
     try {
       // Use provided filters or fall back to state filters
       const activeFilters = filtersToUse !== undefined ? filtersToUse : filters;
-      console.log('🔍 [loadDrafts called] Filters:', activeFilters, 'Stack:', new Error().stack?.split('\n')[2]);
       const response = await draftService.getDrafts(activeFilters);
-      console.log('📊 Received response:', { total: response?.total, count: response?.drafts?.length });
       setDrafts(response?.drafts || []);
     } catch (err) {
       setError('Failed to load drafts. Please try again.');
@@ -569,9 +569,7 @@ const DraftsPage: React.FC = () => {
         </Paper>
       ) : (
         <Grid container spacing={3}>
-          {drafts.map((draft) => {
-            console.log('Draft details:', draft);
-            return (
+          {drafts.map((draft) => (
               <Grid item xs={12} md={6} lg={4} key={draft.draft_id}>
                 <Paper
                   elevation={0}
@@ -582,14 +580,15 @@ const DraftsPage: React.FC = () => {
                     borderRadius: 4,
                     position: 'relative',
                     overflow: 'hidden',
-                    background: '#fafbfc',
-                    border: '2px solid transparent',
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05), 0 2px 4px rgba(0, 0, 0, 0.03)',
+                    background: '#ffffff',
+                    border: '2px solid #e2e8f0',
+                    boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04)',
                     transition: 'all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
                     cursor: 'pointer',
                     '&:hover': {
                       transform: 'translateY(-12px)',
                       boxShadow: '0 28px 56px rgba(102, 126, 234, 0.18), 0 12px 24px rgba(102, 126, 234, 0.1)',
+                      border: '2px solid rgba(102, 126, 234, 0.3)',
                       '& .action-section': {
                         transform: 'translateY(0)',
                         opacity: 1,
@@ -609,15 +608,15 @@ const DraftsPage: React.FC = () => {
                       transition: 'all 0.4s ease',
                     }}
                   >
-                    <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
+                    <Box display="flex" justifyContent="space-between" alignItems="flex-start">
                       <Typography
                         className="card-title"
                         variant="h5"
                         fontWeight={700}
                         sx={{
                           color: 'white',
-                          fontSize: '1.4rem',
-                          lineHeight: 1.2,
+                          fontSize: '1.35rem',
+                          lineHeight: 1.3,
                           flex: 1,
                           pr: 2,
                           transition: 'color 0.4s ease',
@@ -639,244 +638,378 @@ const DraftsPage: React.FC = () => {
                   </Box>
 
                   {/* Card Content */}
-                  <Box sx={{ flexGrow: 1, p: 3, pt: 2 }}>
+                  <Box sx={{
+                    flexGrow: 1,
+                    p: 3,
+                    pt: 2.5,
+                    background: 'linear-gradient(135deg, #f8f9fe 0%, #faf8fc 100%)',
+                  }}>
 
-                    {/* Description */}
-                    <Typography
-                      variant="body1"
+                    {/* Policy Details Section */}
+                    <Box
                       sx={{
-                        mb: 3,
-                        color: '#4a5568',
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical',
-                        overflow: 'hidden',
-                        lineHeight: 1.7,
-                        minHeight: '3.4rem',
-                        fontSize: '0.95rem',
-                        fontWeight: 400,
+                        mb: 2.5,
+                        p: 2.5,
+                        borderRadius: 3,
+                        background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%)',
+                        border: '1px solid rgba(102, 126, 234, 0.2)',
                       }}
                     >
-                      {draft.description || 'No description available for this draft.'}
-                    </Typography>
-
-                    {/* Client Info */}
-                    {draft.client_metadata && (
-                      <Box
-                        sx={
-                          {
-                          p: 2,
-                          borderRadius: 3,
-                          background: '#f7fafc',
-                          border: '1px solid #e2e8f0',
-                          mb: 3,
-                          position: 'relative',
-                          overflow: 'hidden',
-                          '&::before': {
-                            content: '""',
-                            position: 'absolute',
-                            left: 0,
-                            top: 0,
-                            bottom: 0,
-                            width: '4px',
-                            background: 'linear-gradient(180deg, #667eea 0%, #764ba2 100%)',
-                          },
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          color: '#667eea',
+                          display: 'block',
+                          fontSize: '0.7rem',
+                          fontWeight: 700,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.8px',
+                          mb: 2,
                         }}
                       >
-                        <Box display="flex" alignItems="center" gap={2} pl={1}>
-                          <Box
+                        📋 Policy Details
+                      </Typography>
+
+                      <Box display="grid" gridTemplateColumns="1fr 1fr" gap={2} mb={2}>
+                        {/* Function */}
+                        {draft.function && (
+                          <Box>
+                            <Box display="flex" alignItems="center" gap={0.8} mb={0.5}>
+                              <Work sx={{ fontSize: 14, color: '#667eea' }} />
+                              <Typography
+                                variant="caption"
+                                sx={{
+                                  color: '#a0aec0',
+                                  fontSize: '0.65rem',
+                                  fontWeight: 600,
+                                  textTransform: 'uppercase',
+                                }}
+                              >
+                                Function
+                              </Typography>
+                            </Box>
+                            <Typography
+                              variant="body2"
+                              sx={{
+                                color: '#2d3748',
+                                fontWeight: 600,
+                                fontSize: '0.85rem',
+                                pl: 2.8,
+                              }}
+                            >
+                              {draft.function}
+                            </Typography>
+                          </Box>
+                        )}
+
+                        {/* Policy Type */}
+                        {draft.policy_type && (
+                          <Box>
+                            <Box display="flex" alignItems="center" gap={0.8} mb={0.5}>
+                              <DescriptionIcon sx={{ fontSize: 14, color: '#667eea' }} />
+                              <Typography
+                                variant="caption"
+                                sx={{
+                                  color: '#a0aec0',
+                                  fontSize: '0.65rem',
+                                  fontWeight: 600,
+                                  textTransform: 'uppercase',
+                                }}
+                              >
+                                Type
+                              </Typography>
+                            </Box>
+                            <Typography
+                              variant="body2"
+                              sx={{
+                                color: '#2d3748',
+                                fontWeight: 600,
+                                fontSize: '0.85rem',
+                                pl: 2.8,
+                              }}
+                            >
+                              {draft.policy_type}
+                            </Typography>
+                          </Box>
+                        )}
+                      </Box>
+
+                      <Divider sx={{ mb: 2, borderColor: 'rgba(102, 126, 234, 0.15)' }} />
+
+                      {/* Time & Author Grid */}
+                      <Box display="grid" gridTemplateColumns="1fr 1fr 1fr" gap={2}>
+                        {/* Created */}
+                        <Box>
+                          <Box display="flex" alignItems="center" gap={0.8} mb={0.5}>
+                            <CalendarToday sx={{ fontSize: 14, color: '#667eea' }} />
+                            <Typography
+                              variant="caption"
+                              sx={{
+                                color: '#a0aec0',
+                                fontSize: '0.65rem',
+                                fontWeight: 600,
+                                textTransform: 'uppercase',
+                              }}
+                            >
+                              Created
+                            </Typography>
+                          </Box>
+                          <Typography
+                            variant="body2"
                             sx={{
-                              width: 40,
-                              height: 40,
-                              borderRadius: 3,
-                              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              flexShrink: 0,
+                              color: '#2d3748',
+                              fontWeight: 600,
+                              fontSize: '0.8rem',
+                              pl: 2.8,
                             }}
                           >
-                            <Business sx={{ fontSize: 20, color: 'white' }} />
+                            {formatDate(draft.created_at)}
+                          </Typography>
+                        </Box>
+
+                        {/* Updated */}
+                        <Box>
+                          <Box display="flex" alignItems="center" gap={0.8} mb={0.5}>
+                            <AccessTime sx={{ fontSize: 14, color: '#10b981' }} />
+                            <Typography
+                              variant="caption"
+                              sx={{
+                                color: '#a0aec0',
+                                fontSize: '0.65rem',
+                                fontWeight: 600,
+                                textTransform: 'uppercase',
+                              }}
+                            >
+                              Updated
+                            </Typography>
                           </Box>
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              color: '#2d3748',
+                              fontWeight: 600,
+                              fontSize: '0.8rem',
+                              pl: 2.8,
+                            }}
+                          >
+                            {getTimeAgo(draft.modified_at)}
+                          </Typography>
+                        </Box>
+
+                        {/* Created By */}
+                        <Box>
+                          <Box display="flex" alignItems="center" gap={0.8} mb={0.5}>
+                            <Avatar
+                              sx={{
+                                width: 14,
+                                height: 14,
+                                fontSize: '0.6rem',
+                                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                              }}
+                            >
+                              {(draft.created_by || 'U')[0].toUpperCase()}
+                            </Avatar>
+                            <Typography
+                              variant="caption"
+                              sx={{
+                                color: '#a0aec0',
+                                fontSize: '0.65rem',
+                                fontWeight: 600,
+                                textTransform: 'uppercase',
+                              }}
+                            >
+                              Author
+                            </Typography>
+                          </Box>
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              color: '#2d3748',
+                              fontWeight: 600,
+                              fontSize: '0.8rem',
+                              pl: 2.8,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                            }}
+                            title={draft.created_by || 'Unknown User'}
+                          >
+                            {draft.created_by || 'Unknown'}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </Box>
+
+                    {/* Client Information Section */}
+                    {draft.client_metadata && (
+                      <Box
+                        sx={{
+                          p: 2.5,
+                          borderRadius: 3,
+                          background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%)',
+                          border: '1px solid rgba(102, 126, 234, 0.2)',
+                        }}
+                      >
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: '#667eea',
+                            display: 'block',
+                            fontSize: '0.7rem',
+                            fontWeight: 700,
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.8px',
+                            mb: 2,
+                          }}
+                        >
+                          🏢 Client Information
+                        </Typography>
+
+                        {/* Client Name & Industry */}
+                        <Box display="grid" gridTemplateColumns="1fr 1fr" gap={2} mb={2}>
+                          {/* Client Name */}
                           <Box>
+                            <Box display="flex" alignItems="center" gap={0.8} mb={0.5}>
+                              <Business sx={{ fontSize: 14, color: '#667eea' }} />
+                              <Typography
+                                variant="caption"
+                                sx={{
+                                  color: '#a0aec0',
+                                  fontSize: '0.65rem',
+                                  fontWeight: 600,
+                                  textTransform: 'uppercase',
+                                }}
+                              >
+                                Client
+                              </Typography>
+                            </Box>
                             <Typography
                               variant="body2"
                               fontWeight={700}
-                              sx={{ color: '#1a202c', mb: 0.5, fontSize: '0.9rem' }}
+                              sx={{
+                                color: '#2d3748',
+                                fontSize: '0.9rem',
+                                pl: 2.8,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                              }}
+                              title={draft.client_metadata.name}
                             >
                               {draft.client_metadata.name}
                             </Typography>
-                            {draft.client_metadata.industry && (
+                          </Box>
+
+                          {/* Industry */}
+                          {draft.client_metadata.industry && (
+                            <Box>
+                              <Box display="flex" alignItems="center" gap={0.8} mb={0.5}>
+                                <Business sx={{ fontSize: 14, color: '#667eea' }} />
+                                <Typography
+                                  variant="caption"
+                                  sx={{
+                                    color: '#a0aec0',
+                                    fontSize: '0.65rem',
+                                    fontWeight: 600,
+                                    textTransform: 'uppercase',
+                                  }}
+                                >
+                                  Industry
+                                </Typography>
+                              </Box>
                               <Typography
-                                variant="caption"
+                                variant="body2"
                                 sx={{
-                                  color: '#667eea',
+                                  color: '#2d3748',
                                   fontWeight: 600,
-                                  fontSize: '0.75rem',
-                                  display: 'block',
-                                  mb: 0.5,
+                                  fontSize: '0.85rem',
+                                  pl: 2.8,
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
                                 }}
+                                title={draft.client_metadata.industry}
                               >
                                 {draft.client_metadata.industry}
                               </Typography>
-                            )}
-                            <Box display="flex" alignItems="center" gap={0.5}>
-                              <LocationOn sx={{ fontSize: 16, color: '#667eea' }} />
+                            </Box>
+                          )}
+                        </Box>
+
+                        {/* Country & City Grid */}
+                        <Box display="grid" gridTemplateColumns="1fr 1fr" gap={2}>
+                          {/* Country */}
+                          {draft.client_metadata.country && (
+                            <Box>
+                              <Box display="flex" alignItems="center" gap={0.8} mb={0.5}>
+                                <Public sx={{ fontSize: 14, color: '#667eea' }} />
+                                <Typography
+                                  variant="caption"
+                                  sx={{
+                                    color: '#a0aec0',
+                                    fontSize: '0.65rem',
+                                    fontWeight: 600,
+                                    textTransform: 'uppercase',
+                                  }}
+                                >
+                                  Country
+                                </Typography>
+                              </Box>
                               <Typography
-                                variant="caption"
+                                variant="body2"
                                 sx={{
-                                  color: '#718096',
-                                  fontWeight: 500,
+                                  color: '#2d3748',
+                                  fontWeight: 600,
                                   fontSize: '0.8rem',
+                                  pl: 2.8,
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
                                 }}
+                                title={draft.client_metadata.country}
                               >
                                 {draft.client_metadata.country}
                               </Typography>
                             </Box>
-                          </Box>
+                          )}
+
+                          {/* City */}
+                          {draft.client_metadata.city && (
+                            <Box>
+                              <Box display="flex" alignItems="center" gap={0.8} mb={0.5}>
+                                <Apartment sx={{ fontSize: 14, color: '#667eea' }} />
+                                <Typography
+                                  variant="caption"
+                                  sx={{
+                                    color: '#a0aec0',
+                                    fontSize: '0.65rem',
+                                    fontWeight: 600,
+                                    textTransform: 'uppercase',
+                                  }}
+                                >
+                                  City
+                                </Typography>
+                              </Box>
+                              <Typography
+                                variant="body2"
+                                sx={{
+                                  color: '#2d3748',
+                                  fontWeight: 600,
+                                  fontSize: '0.8rem',
+                                  pl: 2.8,
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                }}
+                                title={draft.client_metadata.city}
+                              >
+                                {draft.client_metadata.city}
+                              </Typography>
+                            </Box>
+                          )}
                         </Box>
                       </Box>
                     )}
-
-                    {/* Metadata Section */}
-                    <Box sx={{ mt: 'auto', pt: 2 }}>
-                      {/* Time Info Row */}
-                      <Box
-                        display="flex"
-                        justifyContent="space-between"
-                        alignItems="center"
-                        sx={{
-                          mb: 2,
-                          p: 2,
-                          borderRadius: 2,
-                          bgcolor: '#fafbfc',
-                          border: '1px solid #e2e8f0',
-                        }}
-                      >
-                        <Box display="flex" alignItems="center" gap={1}>
-                          <Box
-                            sx={{
-                              width: 32,
-                              height: 32,
-                              borderRadius: 2,
-                              bgcolor: 'rgba(102, 126, 234, 0.1)',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                            }}
-                          >
-                            <CalendarToday sx={{ fontSize: 16, color: '#667eea' }} />
-                          </Box>
-                          <Box>
-                            <Typography
-                              variant="caption"
-                              sx={{
-                                color: '#a0aec0',
-                                display: 'block',
-                                fontSize: '0.7rem',
-                                fontWeight: 500,
-                              }}
-                            >
-                              CREATED
-                            </Typography>
-                            <Typography
-                              variant="body2"
-                              sx={{
-                                color: '#2d3748',
-                                fontWeight: 600,
-                                fontSize: '0.85rem',
-                              }}
-                            >
-                              {formatDate(draft.created_at)}
-                            </Typography>
-                          </Box>
-                        </Box>
-
-                        <Box display="flex" alignItems="center" gap={1}>
-                          <Box
-                            sx={{
-                              width: 32,
-                              height: 32,
-                              borderRadius: 2,
-                              bgcolor: 'rgba(16, 185, 129, 0.1)',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                            }}
-                          >
-                            <AccessTime sx={{ fontSize: 16, color: '#10b981' }} />
-                          </Box>
-                          <Box>
-                            <Typography
-                              variant="caption"
-                              sx={{
-                                color: '#a0aec0',
-                                display: 'block',
-                                fontSize: '0.7rem',
-                                fontWeight: 500,
-                              }}
-                            >
-                              UPDATED
-                            </Typography>
-                            <Typography
-                              variant="body2"
-                              sx={{
-                                color: '#2d3748',
-                                fontWeight: 600,
-                                fontSize: '0.85rem',
-                              }}
-                            >
-                              {getTimeAgo(draft.modified_at)}
-                            </Typography>
-                          </Box>
-                        </Box>
-                      </Box>
-
-                      {/* Author Section */}
-                      <Box
-                        display="flex"
-                        alignItems="center"
-                        justifyContent="space-between"
-                      >
-                        <Box display="flex" alignItems="center" gap={2}>
-                          <Avatar
-                            sx={{
-                              width: 36,
-                              height: 36,
-                              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                              fontSize: '1rem',
-                              fontWeight: 600,
-                            }}
-                          >
-                            {(draft.created_by || 'U')[0].toUpperCase()}
-                          </Avatar>
-                          <Box>
-                            <Typography
-                              variant="caption"
-                              sx={{
-                                color: '#a0aec0',
-                                display: 'block',
-                                fontSize: '0.7rem',
-                                fontWeight: 500,
-                                textTransform: 'uppercase',
-                              }}
-                            >
-                              Created by
-                            </Typography>
-                            <Typography
-                              variant="body2"
-                              sx={{
-                                color: '#2d3748',
-                                fontWeight: 600,
-                                fontSize: '0.9rem',
-                              }}
-                            >
-                              {draft.created_by || 'Unknown User'}
-                            </Typography>
-                          </Box>
-                        </Box>
-                      </Box>
-                    </Box>
                   </Box>
 
                   {/* Action Section */}
@@ -967,8 +1100,7 @@ const DraftsPage: React.FC = () => {
                   </Box>
                 </Paper>
               </Grid>
-          );
-          })}
+          ))}
         </Grid>
       )}
     </Container>

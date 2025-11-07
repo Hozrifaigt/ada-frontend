@@ -29,10 +29,10 @@ import {
   EditNote,
   AutoAwesome,
 } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Country, State } from 'country-state-city';
 import { draftService } from '../services/draftService';
-import { CreateDraftRequest } from '../types/draft.types';
+import { CreateDraftRequest, Draft } from '../types/draft.types';
 
 // Industry options
 const INDUSTRY_OPTIONS = [
@@ -51,28 +51,34 @@ const INDUSTRY_OPTIONS = [
 
 const NewDraftPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const editDraft = (location.state as { editDraft?: Draft })?.editDraft;
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Get UAE as default country
+  // Get UAE as default country or from edit draft
   const uaeCountry = Country.getAllCountries().find(c => c.isoCode === 'AE');
-  const [selectedCountryCode, setSelectedCountryCode] = useState<string>(uaeCountry?.isoCode || 'AE');
+  const initialCountry = editDraft
+    ? Country.getAllCountries().find(c => c.name === editDraft.metadata.client_metadata.country)
+    : uaeCountry;
+  const [selectedCountryCode, setSelectedCountryCode] = useState<string>(initialCountry?.isoCode || 'AE');
 
   const [formData, setFormData] = useState<CreateDraftRequest>({
-    title: '',
-    description: '',
+    title: editDraft?.metadata.title || '',
+    description: editDraft?.metadata.description || '',
     client_metadata: {
-      name: '',
-      country: uaeCountry?.name || 'United Arab Emirates',
-      city: '',
-      industry: '',
+      name: editDraft?.metadata.client_metadata.name || '',
+      country: editDraft?.metadata.client_metadata.country || uaeCountry?.name || 'United Arab Emirates',
+      city: editDraft?.metadata.client_metadata.city || '',
+      industry: editDraft?.metadata.client_metadata.industry || '',
     },
-    function: '', // Will be set once functions are loaded
-    policy_type: '',
-    client_specific_requests: '',
-    sector_specific_comments: '',
-    regulations: 'UAE Labor Law',
-    detail_level: 3,
+    function: editDraft?.metadata.function || '', // Will be set once functions are loaded if not from edit
+    policy_type: editDraft?.metadata.policy_type || '',
+    client_specific_requests: editDraft?.metadata.client_specific_requests || '',
+    sector_specific_comments: editDraft?.metadata.sector_specific_comments || '',
+    regulations: editDraft?.metadata.regulations || 'UAE Labor Law',
+    detail_level: editDraft?.metadata.detail_level || 3,
   });
 
   const [functions, setFunctions] = useState<string[]>([]);
@@ -108,12 +114,12 @@ const NewDraftPage: React.FC = () => {
     fetchFunctions();
   }, []);
 
-  // Set default function once functions are loaded
+  // Set default function once functions are loaded (only if not editing)
   useEffect(() => {
-    if (functions.length > 0 && !formData.function) {
+    if (functions.length > 0 && !formData.function && !editDraft) {
       setFormData(prev => ({ ...prev, function: functions[0] }));
     }
-  }, [functions]);
+  }, [functions, editDraft]);
 
   // Fetch policy types when function changes
   useEffect(() => {
@@ -202,14 +208,23 @@ const NewDraftPage: React.FC = () => {
     setLoading(true);
 
     try {
-      const response = await draftService.createDraft(formData);
-      // Pass the TOC source info through navigation state
-      navigate(`/drafts/${response.draft_id}`, {
-        state: { tocSource: response.toc_source }
-      });
+      if (editDraft) {
+        // Update existing draft metadata
+        await draftService.updateDraftMetadata(editDraft.id, formData);
+        // Navigate back to the draft
+        navigate(`/drafts/${editDraft.id}`);
+      } else {
+        // Create new draft
+        const response = await draftService.createDraft(formData);
+        // Pass the TOC source info through navigation state
+        navigate(`/drafts/${response.draft_id}`, {
+          state: { tocSource: response.toc_source }
+        });
+      }
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to create draft. Please try again.');
-      console.error('Error creating draft:', err);
+      const action = editDraft ? 'update' : 'create';
+      setError(err.response?.data?.detail || `Failed to ${action} draft. Please try again.`);
+      console.error(`Error ${action}ing draft:`, err);
     } finally {
       setLoading(false);
     }
@@ -246,13 +261,21 @@ const NewDraftPage: React.FC = () => {
           <Description sx={{ fontSize: 40, color: 'primary.main' }} />
           <Box>
             <Typography variant="h4" fontWeight={600}>
-              Create New Policy Draft
+              {editDraft ? 'Edit Draft Metadata' : 'Create New Policy Draft'}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Initialize a new policy document with AI-powered assistance
+              {editDraft
+                ? 'Update the metadata and details for your policy document'
+                : 'Initialize a new policy document with AI-powered assistance'}
             </Typography>
           </Box>
         </Box>
+
+        {editDraft && (
+          <Alert severity="info" sx={{ mb: 3 }}>
+            <strong>Note:</strong> You are editing the metadata of an existing draft. The changes will be saved to the current draft.
+          </Alert>
+        )}
 
         {error && (
           <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
@@ -544,7 +567,9 @@ const NewDraftPage: React.FC = () => {
                     disabled={loading || !isFormValid()}
                     sx={{ minWidth: 150 }}
                   >
-                    {loading ? 'Creating...' : 'Create Draft'}
+                    {loading
+                      ? (editDraft ? 'Updating...' : 'Creating...')
+                      : (editDraft ? 'Save Changes' : 'Create Draft')}
                   </Button>
                 </Box>
               </Box>
