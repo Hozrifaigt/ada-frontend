@@ -604,8 +604,10 @@ const DraftsPage: React.FC = () => {
                       p: 3,
                       pb: 2,
                       background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                      color: 'white',
+                      borderRadius: '16px 16px 0 0',
                       transition: 'all 0.4s ease',
+                      position: 'relative',
+                      overflow: 'hidden',
                     }}
                   >
                     <Box display="flex" justifyContent="space-between" alignItems="flex-start">
@@ -641,30 +643,41 @@ const DraftsPage: React.FC = () => {
                   <Box sx={{
                     flexGrow: 1,
                     p: 3,
-                    pt: 2.5,
-                    background: 'linear-gradient(135deg, #f8f9fe 0%, #faf8fc 100%)',
+                    pt: 4.5,
+                    backgroundColor: '#f8f9fa',
                   }}>
 
                     {/* Policy Details Section */}
                     <Box
                       sx={{
-                        mb: 2.5,
+                        mb: 4.5,
                         p: 2.5,
-                        borderRadius: 3,
+                        pt: 3.5,
+                        borderRadius: 2,
                         background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%)',
-                        border: '1px solid rgba(102, 126, 234, 0.2)',
+                        border: '2px solid',
+                        borderColor: 'rgba(102, 126, 234, 0.4)',
+                        position: 'relative',
+                        boxShadow: '0 4px 12px rgba(102, 126, 234, 0.15)',
                       }}
                     >
                       <Typography
-                        variant="caption"
+                        variant="h6"
                         sx={{
-                          color: '#667eea',
-                          display: 'block',
-                          fontSize: '0.7rem',
+                          position: 'absolute',
+                          top: -26,
+                          left: -4,
+                          px: 1.5,
+                          py: 0,
+                          // bgcolor: '#f8f9fa',
+                          color: 'rgb(102, 126, 234)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 0.8,
+                          fontSize: '0.95rem',
                           fontWeight: 700,
                           textTransform: 'uppercase',
-                          letterSpacing: '0.8px',
-                          mb: 2,
+                          letterSpacing: '0.5px',
                         }}
                       >
                         📋 Policy Details
@@ -675,11 +688,11 @@ const DraftsPage: React.FC = () => {
                         {draft.function && (
                           <Box>
                             <Box display="flex" alignItems="center" gap={0.8} mb={0.5}>
-                              <Work sx={{ fontSize: 14, color: '#667eea' }} />
+                              <Work sx={{ fontSize: 14, color: 'rgb(102, 126, 234)' }} />
                               <Typography
                                 variant="caption"
                                 sx={{
-                                  color: '#a0aec0',
+                                  color: 'rgb(160, 174, 192)',
                                   fontSize: '0.65rem',
                                   fontWeight: 600,
                                   textTransform: 'uppercase',
@@ -691,9 +704,8 @@ const DraftsPage: React.FC = () => {
                             <Typography
                               variant="body2"
                               sx={{
-                                color: '#2d3748',
-                                fontWeight: 600,
-                                fontSize: '0.85rem',
+                                color: '#000000',
+                                fontSize: '0.75rem',
                                 pl: 2.8,
                               }}
                             >
@@ -706,11 +718,11 @@ const DraftsPage: React.FC = () => {
                         {draft.policy_type && (
                           <Box>
                             <Box display="flex" alignItems="center" gap={0.8} mb={0.5}>
-                              <DescriptionIcon sx={{ fontSize: 14, color: '#667eea' }} />
+                              <DescriptionIcon sx={{ fontSize: 14, color: 'rgb(102, 126, 234)' }} />
                               <Typography
                                 variant="caption"
                                 sx={{
-                                  color: '#a0aec0',
+                                  color: 'rgb(160, 174, 192)',
                                   fontSize: '0.65rem',
                                   fontWeight: 600,
                                   textTransform: 'uppercase',
@@ -722,9 +734,8 @@ const DraftsPage: React.FC = () => {
                             <Typography
                               variant="body2"
                               sx={{
-                                color: '#2d3748',
-                                fontWeight: 600,
-                                fontSize: '0.85rem',
+                                color: '#000000',
+                                fontSize: '0.75rem',
                                 pl: 2.8,
                               }}
                             >
@@ -734,18 +745,18 @@ const DraftsPage: React.FC = () => {
                         )}
                       </Box>
 
-                      <Divider sx={{ mb: 2, borderColor: 'rgba(102, 126, 234, 0.15)' }} />
+                      <Divider sx={{ my: 2, borderColor: 'rgba(102, 126, 234, 0.15)' }} />
 
                       {/* Time & Author Grid */}
                       <Box display="grid" gridTemplateColumns="1fr 1fr 1fr" gap={2}>
                         {/* Created */}
                         <Box>
                           <Box display="flex" alignItems="center" gap={0.8} mb={0.5}>
-                            <CalendarToday sx={{ fontSize: 14, color: '#667eea' }} />
+                            <CalendarToday sx={{ fontSize: 14, color: 'rgb(102, 126, 234)' }} />
                             <Typography
                               variant="caption"
                               sx={{
-                                color: '#a0aec0',
+                                color: 'rgb(160, 174, 192)',
                                 fontSize: '0.65rem',
                                 fontWeight: 600,
                                 textTransform: 'uppercase',
@@ -757,9 +768,8 @@ const DraftsPage: React.FC = () => {
                           <Typography
                             variant="body2"
                             sx={{
-                              color: '#2d3748',
-                              fontWeight: 600,
-                              fontSize: '0.8rem',
+                              color: '#000000',
+                              fontSize: '0.7rem',
                               pl: 2.8,
                             }}
                           >
@@ -770,11 +780,11 @@ const DraftsPage: React.FC = () => {
                         {/* Updated */}
                         <Box>
                           <Box display="flex" alignItems="center" gap={0.8} mb={0.5}>
-                            <AccessTime sx={{ fontSize: 14, color: '#10b981' }} />
+                            <AccessTime sx={{ fontSize: 14, color: 'rgb(102, 126, 234)' }} />
                             <Typography
                               variant="caption"
                               sx={{
-                                color: '#a0aec0',
+                                color: 'rgb(160, 174, 192)',
                                 fontSize: '0.65rem',
                                 fontWeight: 600,
                                 textTransform: 'uppercase',
@@ -786,9 +796,8 @@ const DraftsPage: React.FC = () => {
                           <Typography
                             variant="body2"
                             sx={{
-                              color: '#2d3748',
-                              fontWeight: 600,
-                              fontSize: '0.8rem',
+                              color: '#000000',
+                              fontSize: '0.7rem',
                               pl: 2.8,
                             }}
                           >
@@ -804,7 +813,7 @@ const DraftsPage: React.FC = () => {
                                 width: 14,
                                 height: 14,
                                 fontSize: '0.6rem',
-                                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                backgroundColor: 'rgb(102, 126, 234)',
                               }}
                             >
                               {(draft.created_by || 'U')[0].toUpperCase()}
@@ -812,7 +821,7 @@ const DraftsPage: React.FC = () => {
                             <Typography
                               variant="caption"
                               sx={{
-                                color: '#a0aec0',
+                                color: 'rgb(160, 174, 192)',
                                 fontSize: '0.65rem',
                                 fontWeight: 600,
                                 textTransform: 'uppercase',
@@ -824,9 +833,8 @@ const DraftsPage: React.FC = () => {
                           <Typography
                             variant="body2"
                             sx={{
-                              color: '#2d3748',
-                              fontWeight: 600,
-                              fontSize: '0.8rem',
+                              color: '#000000',
+                              fontSize: '0.7rem',
                               pl: 2.8,
                               overflow: 'hidden',
                               textOverflow: 'ellipsis',
@@ -845,21 +853,32 @@ const DraftsPage: React.FC = () => {
                       <Box
                         sx={{
                           p: 2.5,
-                          borderRadius: 3,
+                          pt: 3.5,
+                          borderRadius: 2,
                           background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%)',
-                          border: '1px solid rgba(102, 126, 234, 0.2)',
+                          border: '2px solid',
+                          borderColor: 'rgba(102, 126, 234, 0.4)',
+                          position: 'relative',
+                          boxShadow: '0 4px 12px rgba(102, 126, 234, 0.15)',
                         }}
                       >
                         <Typography
-                          variant="caption"
+                          variant="h6"
                           sx={{
-                            color: '#667eea',
-                            display: 'block',
-                            fontSize: '0.7rem',
+                            position: 'absolute',
+                            top: -26,
+                            left: -4,
+                            px: 1.5,
+                            py: 0,
+                            // bgcolor: '#f8f9fa',
+                            color: 'rgb(102, 126, 234)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 0.8,
+                            fontSize: '0.95rem',
                             fontWeight: 700,
                             textTransform: 'uppercase',
-                            letterSpacing: '0.8px',
-                            mb: 2,
+                            letterSpacing: '0.5px',
                           }}
                         >
                           🏢 Client Information
@@ -870,11 +889,11 @@ const DraftsPage: React.FC = () => {
                           {/* Client Name */}
                           <Box>
                             <Box display="flex" alignItems="center" gap={0.8} mb={0.5}>
-                              <Business sx={{ fontSize: 14, color: '#667eea' }} />
+                              <Business sx={{ fontSize: 14, color: 'rgb(102, 126, 234)' }} />
                               <Typography
                                 variant="caption"
                                 sx={{
-                                  color: '#a0aec0',
+                                  color: 'rgb(160, 174, 192)',
                                   fontSize: '0.65rem',
                                   fontWeight: 600,
                                   textTransform: 'uppercase',
@@ -885,10 +904,9 @@ const DraftsPage: React.FC = () => {
                             </Box>
                             <Typography
                               variant="body2"
-                              fontWeight={700}
                               sx={{
-                                color: '#2d3748',
-                                fontSize: '0.9rem',
+                                color: '#000000',
+                                fontSize: '0.75rem',
                                 pl: 2.8,
                                 overflow: 'hidden',
                                 textOverflow: 'ellipsis',
@@ -904,11 +922,11 @@ const DraftsPage: React.FC = () => {
                           {draft.client_metadata.industry && (
                             <Box>
                               <Box display="flex" alignItems="center" gap={0.8} mb={0.5}>
-                                <Business sx={{ fontSize: 14, color: '#667eea' }} />
+                                <Business sx={{ fontSize: 14, color: 'rgb(102, 126, 234)' }} />
                                 <Typography
                                   variant="caption"
                                   sx={{
-                                    color: '#a0aec0',
+                                    color: 'rgb(160, 174, 192)',
                                     fontSize: '0.65rem',
                                     fontWeight: 600,
                                     textTransform: 'uppercase',
@@ -920,9 +938,8 @@ const DraftsPage: React.FC = () => {
                               <Typography
                                 variant="body2"
                                 sx={{
-                                  color: '#2d3748',
-                                  fontWeight: 600,
-                                  fontSize: '0.85rem',
+                                  color: '#000000',
+                                  fontSize: '0.75rem',
                                   pl: 2.8,
                                   overflow: 'hidden',
                                   textOverflow: 'ellipsis',
@@ -942,11 +959,11 @@ const DraftsPage: React.FC = () => {
                           {draft.client_metadata.country && (
                             <Box>
                               <Box display="flex" alignItems="center" gap={0.8} mb={0.5}>
-                                <Public sx={{ fontSize: 14, color: '#667eea' }} />
+                                <Public sx={{ fontSize: 14, color: 'rgb(102, 126, 234)' }} />
                                 <Typography
                                   variant="caption"
                                   sx={{
-                                    color: '#a0aec0',
+                                    color: 'rgb(160, 174, 192)',
                                     fontSize: '0.65rem',
                                     fontWeight: 600,
                                     textTransform: 'uppercase',
@@ -958,9 +975,8 @@ const DraftsPage: React.FC = () => {
                               <Typography
                                 variant="body2"
                                 sx={{
-                                  color: '#2d3748',
-                                  fontWeight: 600,
-                                  fontSize: '0.8rem',
+                                  color: '#000000',
+                                  fontSize: '0.7rem',
                                   pl: 2.8,
                                   overflow: 'hidden',
                                   textOverflow: 'ellipsis',
@@ -977,11 +993,11 @@ const DraftsPage: React.FC = () => {
                           {draft.client_metadata.city && (
                             <Box>
                               <Box display="flex" alignItems="center" gap={0.8} mb={0.5}>
-                                <Apartment sx={{ fontSize: 14, color: '#667eea' }} />
+                                <Apartment sx={{ fontSize: 14, color: 'rgb(102, 126, 234)' }} />
                                 <Typography
                                   variant="caption"
                                   sx={{
-                                    color: '#a0aec0',
+                                    color: 'rgb(102, 126, 234)',
                                     fontSize: '0.65rem',
                                     fontWeight: 600,
                                     textTransform: 'uppercase',
@@ -993,9 +1009,8 @@ const DraftsPage: React.FC = () => {
                               <Typography
                                 variant="body2"
                                 sx={{
-                                  color: '#2d3748',
-                                  fontWeight: 600,
-                                  fontSize: '0.8rem',
+                                  color: '#000000',
+                                  fontSize: '0.7rem',
                                   pl: 2.8,
                                   overflow: 'hidden',
                                   textOverflow: 'ellipsis',
@@ -1018,12 +1033,10 @@ const DraftsPage: React.FC = () => {
                     sx={{
                       p: 3,
                       pt: 0,
-                      transform: 'translateY(10px)',
-                      opacity: 0.7,
                       transition: 'all 0.4s ease',
                     }}
                   >
-                    <Box display="flex" gap={1.5} justifyContent="center">
+                    <Box display="flex" gap={1.5} justifyContent="center" alignItems="stretch">
                       <Button
                         size="small"
                         variant="contained"
@@ -1036,11 +1049,12 @@ const DraftsPage: React.FC = () => {
                           background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                           textTransform: 'none',
                           px: 3,
-                          py: 1,
+                          py: 1.2,
                           borderRadius: 3,
                           fontWeight: 600,
                           fontSize: '0.85rem',
                           boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)',
+                          flex: '1 1 60%',
                           '&:hover': {
                             background: 'linear-gradient(135deg, #5569d8 0%, #6a4291 100%)',
                             transform: 'translateY(-2px)',
@@ -1061,8 +1075,8 @@ const DraftsPage: React.FC = () => {
                             border: '2px solid #e2e8f0',
                             borderRadius: 2,
                             color: '#667eea',
-                            width: 40,
-                            height: 40,
+                            width: 44,
+                            height: 44,
                             '&:hover': {
                               bgcolor: 'rgba(102, 126, 234, 0.1)',
                               borderColor: '#667eea',
@@ -1084,8 +1098,8 @@ const DraftsPage: React.FC = () => {
                             border: '2px solid #fecaca',
                             borderRadius: 2,
                             color: '#ef4444',
-                            width: 40,
-                            height: 40,
+                            width: 44,
+                            height: 44,
                             '&:hover': {
                               bgcolor: '#fee2e2',
                               borderColor: '#f87171',
