@@ -24,7 +24,6 @@ import {
   Person,
   Logout,
   ChevronLeft,
-  AdminPanelSettings,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useMsal } from '@azure/msal-react';
@@ -139,16 +138,11 @@ const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({ children }) =
     }
   };
 
-  // Check if user is admin
-  const adminEmails = ['hozayfa.rifai@ae.gt.com'];
-  const isAdmin = adminEmails.includes(user.email?.toLowerCase() || '');
-
   const menuItems = [
     { text: 'Drafts', icon: <Description />, path: '/drafts' },
     { text: 'New Draft', icon: <Add />, path: '/drafts/new' },
     { text: 'Profile', icon: <Person />, path: '/profile' },
     { text: 'Help', icon: <Help />, path: '/help' },
-    ...(isAdmin ? [{ text: 'Admin', icon: <AdminPanelSettings />, path: '/admin' }] : []),
   ];
 
   return (

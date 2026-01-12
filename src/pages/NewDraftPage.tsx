@@ -73,91 +73,22 @@ const NewDraftPage: React.FC = () => {
       city: editDraft?.metadata.client_metadata.city || '',
       industry: editDraft?.metadata.client_metadata.industry || '',
     },
-    function: editDraft?.metadata.function || '', // Will be set once functions are loaded if not from edit
-    policy_type: editDraft?.metadata.policy_type || '',
+    function: editDraft?.metadata.function || 'HR',
     client_specific_requests: editDraft?.metadata.client_specific_requests || '',
     sector_specific_comments: editDraft?.metadata.sector_specific_comments || '',
     regulations: editDraft?.metadata.regulations || 'UAE Labor Law',
     detail_level: editDraft?.metadata.detail_level || 3,
   });
 
-  const [functions, setFunctions] = useState<string[]>([]);
-  const [loadingFunctions, setLoadingFunctions] = useState(false);
-  const [policyTypes, setPolicyTypes] = useState<string[]>([]);
-  const [loadingPolicyTypes, setLoadingPolicyTypes] = useState(false);
+  // Static list of functions
+  const functions = ['HR', 'IT', 'Legal', 'Finance', 'Operations'];
 
   // Get all countries and states (for UAE, these are the emirates)
   // Filter out Israel from the country list
   const countries = Country.getAllCountries().filter(country => country.isoCode !== 'IL');
   const states = State.getStatesOfCountry(selectedCountryCode) || [];
 
-  // Fetch available functions on mount
-  useEffect(() => {
-    const fetchFunctions = async () => {
-      setLoadingFunctions(true);
-      try {
-        const response = await draftService.getFunctions();
-        if (response.policy_types.length === 0) {
-          // Fallback if no templates uploaded yet
-          setFunctions(['HR']);
-        } else {
-          setFunctions(response.policy_types);
-        }
-      } catch (err) {
-        console.error('Failed to fetch functions:', err);
-        setFunctions(['HR']); // Fallback
-      } finally {
-        setLoadingFunctions(false);
-      }
-    };
-
-    fetchFunctions();
-  }, []);
-
-  // Set default function once functions are loaded (only if not editing)
-  useEffect(() => {
-    if (functions.length > 0 && !formData.function && !editDraft) {
-      setFormData(prev => ({ ...prev, function: functions[0] }));
-    }
-  }, [functions, editDraft]);
-
-  // Fetch policy types when function changes
-  useEffect(() => {
-    const fetchPolicyTypes = async () => {
-      if (!formData.function) return;
-
-      setLoadingPolicyTypes(true);
-      try {
-        const response = await draftService.getPolicyTypes(formData.function);
-        // If no policy types from backend, use mock data for testing
-        if (response.policy_types.length === 0) {
-          setPolicyTypes([
-            'Recruitment and Selection Policy',
-            'Employee Onboarding Policy',
-            'Performance Management Policy',
-            'Leave and Absence Policy',
-            'Compensation and Benefits Policy'
-          ]);
-        } else {
-          setPolicyTypes(response.policy_types);
-        }
-      } catch (err) {
-        console.error('Failed to fetch policy types:', err);
-        // Fallback to mock data if API fails
-        setPolicyTypes([
-          'Recruitment and Selection Policy',
-          'Employee Onboarding Policy',
-          'Performance Management Policy',
-          'Leave and Absence Policy',
-          'Compensation and Benefits Policy'
-        ]);
-      } finally {
-        setLoadingPolicyTypes(false);
-      }
-    };
-
-    fetchPolicyTypes();
-  }, [formData.function]);
+  // Functions list is now static - no need to fetch from backend
 
   const handleChange = (field: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
     if (field.includes('.')) {
@@ -238,7 +169,6 @@ const NewDraftPage: React.FC = () => {
       city: formData.client_metadata.city.trim() !== '',
       industry: formData.client_metadata.industry.trim() !== '',
       function: formData.function.trim() !== '',
-      policy_type: formData.policy_type.trim() !== '',
       regulations: formData.regulations.trim() !== ''
     };
 
@@ -325,51 +255,15 @@ const NewDraftPage: React.FC = () => {
                       <InputLabel>Function</InputLabel>
                       <Select
                         value={formData.function}
-                        onChange={(e) => setFormData({ ...formData, function: e.target.value, policy_type: '' })}
+                        onChange={(e) => setFormData({ ...formData, function: e.target.value })}
                         label="Function"
-                        disabled={loadingFunctions || functions.length === 0}
                         sx={{ backgroundColor: 'background.paper' }}
                       >
-                        {loadingFunctions ? (
-                          <MenuItem disabled>
-                            <CircularProgress size={20} sx={{ mr: 1 }} /> Loading functions...
+                        {functions.map((func) => (
+                          <MenuItem key={func} value={func}>
+                            {func}
                           </MenuItem>
-                        ) : functions.length === 0 ? (
-                          <MenuItem disabled>No functions available</MenuItem>
-                        ) : (
-                          functions.map((func) => (
-                            <MenuItem key={func} value={func}>
-                              {func}
-                            </MenuItem>
-                          ))
-                        )}
-                      </Select>
-                    </FormControl>
-                  </Grid>
-
-                  <Grid item xs={12} md={6}>
-                    <FormControl fullWidth required>
-                      <InputLabel>Policy Type</InputLabel>
-                      <Select
-                        value={formData.policy_type}
-                        onChange={(e) => setFormData({ ...formData, policy_type: e.target.value })}
-                        label="Policy Type"
-                        disabled={loadingPolicyTypes || policyTypes.length === 0}
-                        sx={{ backgroundColor: 'background.paper' }}
-                      >
-                        {loadingPolicyTypes ? (
-                          <MenuItem disabled>
-                            <CircularProgress size={20} sx={{ mr: 1 }} /> Loading policies...
-                          </MenuItem>
-                        ) : policyTypes.length === 0 ? (
-                          <MenuItem disabled>No policy types available</MenuItem>
-                        ) : (
-                          policyTypes.map((type) => (
-                            <MenuItem key={type} value={type}>
-                              {type}
-                            </MenuItem>
-                          ))
-                        )}
+                        ))}
                       </Select>
                     </FormControl>
                   </Grid>

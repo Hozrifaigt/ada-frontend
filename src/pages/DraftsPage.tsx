@@ -69,8 +69,8 @@ const DraftsPage: React.FC = () => {
   // Filter and search state
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
-  const [functions, setFunctions] = useState<string[]>([]);
-  const [policyTypes, setPolicyTypes] = useState<string[]>([]);
+  // Static list of functions
+  const functions = ['HR', 'IT', 'Legal', 'Finance', 'Operations'];
   const [filters, setFilters] = useState<{
     title?: string;
     country?: string;
@@ -78,7 +78,6 @@ const DraftsPage: React.FC = () => {
     created_by?: string;
     industry?: string;
     function?: string;
-    policy_type?: string;
   }>({});
 
   // Temporary filters for the drawer (only applied when clicking Apply)
@@ -92,7 +91,6 @@ const DraftsPage: React.FC = () => {
 
   useEffect(() => {
     // Load initial data on mount only once
-    loadFunctions();
     loadDrafts();
     initialLoadDone.current = true;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -133,28 +131,7 @@ const DraftsPage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
 
-  const loadFunctions = async () => {
-    try {
-      const response = await draftService.getFunctions();
-      setFunctions(response.policy_types || []);
-    } catch (err) {
-      console.error('Error loading functions:', err);
-    }
-  };
-
-  const loadPolicyTypes = async (functionName: string) => {
-    if (!functionName) {
-      setPolicyTypes([]);
-      return;
-    }
-    try {
-      const response = await draftService.getPolicyTypes(functionName);
-      setPolicyTypes(response.policy_types || []);
-    } catch (err) {
-      console.error('Error loading policy types:', err);
-      setPolicyTypes([]);
-    }
-  };
+  // Functions list is now static - no need to fetch from backend
 
   const loadDrafts = async (filtersToUse?: typeof filters) => {
     setLoading(true);
@@ -205,10 +182,6 @@ const DraftsPage: React.FC = () => {
     // Copy current filters to temp filters when opening drawer
     setTempFilters(filters);
     setShowFilters(true);
-    // Load policy types if function is already set
-    if (filters.function) {
-      loadPolicyTypes(filters.function);
-    }
   };
 
   const handleApplyFilters = async () => {
@@ -470,14 +443,8 @@ const DraftsPage: React.FC = () => {
                   const funcValue = e.target.value || undefined;
                   setTempFilters(prev => ({
                     ...prev,
-                    function: funcValue,
-                    policy_type: undefined // Reset policy type when function changes
+                    function: funcValue
                   }));
-                  if (funcValue) {
-                    loadPolicyTypes(funcValue);
-                  } else {
-                    setPolicyTypes([]);
-                  }
                 }}
                 label="Function"
               >
@@ -491,27 +458,6 @@ const DraftsPage: React.FC = () => {
                 ))}
               </Select>
             </FormControl>
-
-            {/* Policy Type Filter */}
-            {tempFilters.function && (
-              <FormControl fullWidth>
-                <InputLabel>Policy Type</InputLabel>
-                <Select
-                  value={tempFilters.policy_type || ''}
-                  onChange={(e) => setTempFilters(prev => ({ ...prev, policy_type: e.target.value || undefined }))}
-                  label="Policy Type"
-                >
-                  <MenuItem value="">
-                    <em>All Policy Types</em>
-                  </MenuItem>
-                  {policyTypes.map((type) => (
-                    <MenuItem key={type} value={type}>
-                      {type}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            )}
           </Box>
 
           <Box sx={{ mt: 4, display: 'flex', gap: 2 }}>
@@ -683,7 +629,7 @@ const DraftsPage: React.FC = () => {
                         📋 Policy Details
                       </Typography>
 
-                      <Box display="grid" gridTemplateColumns="1fr 1fr" gap={2} mb={2}>
+                      <Box mb={2}>
                         {/* Function */}
                         {draft.function && (
                           <Box>
@@ -710,36 +656,6 @@ const DraftsPage: React.FC = () => {
                               }}
                             >
                               {draft.function}
-                            </Typography>
-                          </Box>
-                        )}
-
-                        {/* Policy Type */}
-                        {draft.policy_type && (
-                          <Box>
-                            <Box display="flex" alignItems="center" gap={0.8} mb={0.5}>
-                              <DescriptionIcon sx={{ fontSize: 14, color: 'rgb(102, 126, 234)' }} />
-                              <Typography
-                                variant="caption"
-                                sx={{
-                                  color: 'rgb(160, 174, 192)',
-                                  fontSize: '0.65rem',
-                                  fontWeight: 600,
-                                  textTransform: 'uppercase',
-                                }}
-                              >
-                                Type
-                              </Typography>
-                            </Box>
-                            <Typography
-                              variant="body2"
-                              sx={{
-                                color: '#000000',
-                                fontSize: '0.75rem',
-                                pl: 2.8,
-                              }}
-                            >
-                              {draft.policy_type}
                             </Typography>
                           </Box>
                         )}

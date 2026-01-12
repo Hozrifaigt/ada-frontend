@@ -3879,25 +3879,6 @@ const DraftEditPage: React.FC = () => {
                   </Box>
                 )}
 
-                {/* Policy Type */}
-                {draft.metadata.policy_type && (
-                  <Box>
-                    <Typography variant="body2" sx={{
-                      color: '#667eea',
-                      fontWeight: 700,
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.5px',
-                      fontSize: '0.9rem',
-                      mb: 1
-                    }}>
-                      Type
-                    </Typography>
-                    <Typography variant="body1" sx={{ color: '#2d3748', lineHeight: 1.5, fontSize: '1.05rem' }}>
-                      {draft.metadata.policy_type}
-                    </Typography>
-                  </Box>
-                )}
-
                 {/* Regulations */}
                 {draft.metadata.regulations && (
                   <Box>

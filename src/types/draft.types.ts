@@ -40,9 +40,8 @@ export interface DraftMetadata {
   modified_at: string;
   client_metadata: ClientMetadata;
   function: string;
-  policy_type: string;
   most_similar_policy_id?: string;
-  toc_source?: 'similarity_search' | 'ai_generated';
+  toc_source?: 'ai_generated';
   client_specific_requests?: string;
   sector_specific_comments?: string;
   regulations?: string;
@@ -65,7 +64,6 @@ export interface DraftSummary {
   most_similar_policy_id?: string;
   client_metadata?: ClientMetadata;
   function?: string;
-  policy_type?: string;
 }
 
 export interface CreateDraftRequest {
@@ -73,7 +71,6 @@ export interface CreateDraftRequest {
   description?: string;
   client_metadata: ClientMetadata;
   function: string;
-  policy_type: string;
   client_specific_requests?: string;
   sector_specific_comments?: string;
   regulations: string;
@@ -85,7 +82,6 @@ export interface ValidateDraftRequest {
   description?: string;
   client_metadata: ClientMetadata;
   function: string;
-  policy_type: string;
   client_specific_requests?: string;
   sector_specific_comments?: string;
   regulations: string;
@@ -179,17 +175,4 @@ export interface TOCConfirmResponse {
   undo_available: boolean;
 }
 
-// Policy Template Types
-export interface GetPolicyTypesResponse {
-  policy_types: string[];
-  total: number;
-}
-
-export interface CreateDraftFromTemplateRequest {
-  template_id: string;
-  title: string;
-  client_metadata: ClientMetadata;
-  client_specific_requests?: string;
-  regulations: string;
-  detail_level: number;
-}
+// Policy Template Types removed - no longer using Excel templates

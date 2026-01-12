@@ -12,8 +12,7 @@ import {
   TOCTopic,
   TOCChatResponse,
   TOCOperation,
-  TOCConfirmResponse,
-  GetPolicyTypesResponse
+  TOCConfirmResponse
 } from '../types/draft.types';
 
 // Create a special client with longer timeout for draft initialization and content generation
@@ -87,7 +86,6 @@ export const draftService = {
     created_by?: string;
     industry?: string;
     function?: string;
-    policy_type?: string;
   }): Promise<{ drafts: DraftSummary[]; total: number }> {
     try {
       // Build query string from filters
@@ -209,15 +207,5 @@ export const draftService = {
     return response.data;
   },
 
-  async getPolicyTypes(functionName: string): Promise<GetPolicyTypesResponse> {
-    const response = await apiClient.get(`/api/v1/drafts/policy-templates`, {
-      params: { function: functionName }
-    });
-    return response.data;
-  },
-
-  async getFunctions(): Promise<GetPolicyTypesResponse> {
-    const response = await apiClient.get(`/api/v1/drafts/functions`);
-    return response.data;
-  },
+  // Policy type methods removed - no longer using Excel templates
 };
