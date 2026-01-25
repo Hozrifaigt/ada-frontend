@@ -105,14 +105,25 @@ const LoginPage: React.FC = () => {
           navigate('/drafts');
         }).catch(error => {
           console.error('Token acquisition failed:', error);
-          // Token acquisition failed - clear the MSAL cache and stay on login page
-          localStorage.setItem('justLoggedOut', 'true');
-          instance.logoutRedirect({
-            postLogoutRedirectUri: '/login'
-          }).catch(() => {
-            // Even if logout fails, stay on login page
-            console.log('MSAL logout failed, but staying on login page');
-          });
+          // Token acquisition failed - clear local cache and let user login again
+          // Don't trigger a logout redirect - just clear the stale data locally
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('user');
+          instance.setActiveAccount(null);
+
+          // Clear MSAL cache items from localStorage
+          const msalKeys = Object.keys(localStorage).filter(key =>
+            key.includes('msal') || key.includes('login.windows') || key.includes('login.microsoft')
+          );
+          msalKeys.forEach(key => localStorage.removeItem(key));
+
+          // Clear session storage as well
+          const sessionKeys = Object.keys(sessionStorage).filter(key =>
+            key.includes('msal') || key.includes('login.windows') || key.includes('login.microsoft')
+          );
+          sessionKeys.forEach(key => sessionStorage.removeItem(key));
+
+          console.log('Cleared stale auth data - user can now login fresh');
         });
       }
 
