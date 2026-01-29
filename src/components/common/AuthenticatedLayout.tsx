@@ -15,6 +15,8 @@ import {
   Divider,
   Menu,
   MenuItem,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -39,6 +41,8 @@ const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({ children }) =
   const navigate = useNavigate();
   const location = useLocation();
   const { instance, accounts } = useMsal();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [drawerOpen, setDrawerOpen] = useState(true);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
@@ -150,8 +154,8 @@ const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({ children }) =
       <AppBar
         position="fixed"
         sx={{
-          width: drawerOpen ? `calc(100% - ${drawerWidth}px)` : '100%',
-          ml: drawerOpen ? `${drawerWidth}px` : 0,
+          width: isMobile ? '100%' : (drawerOpen ? `calc(100% - ${drawerWidth}px)` : '100%'),
+          ml: isMobile ? 0 : (drawerOpen ? `${drawerWidth}px` : 0),
           background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
           transition: (theme) =>
             theme.transitions.create(['margin', 'width'], {
@@ -176,7 +180,7 @@ const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({ children }) =
           </Typography>
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Typography variant="body2" sx={{ color: 'white', fontWeight: 500 }}>
+            <Typography variant="body2" sx={{ color: 'white', fontWeight: 500, display: { xs: 'none', sm: 'block' } }}>
               {user.name || 'User'}
             </Typography>
             <IconButton onClick={handleProfileMenu} sx={{ p: 0 }}>
@@ -240,9 +244,10 @@ const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({ children }) =
               }),
           },
         }}
-        variant="persistent"
+        variant={isMobile ? 'temporary' : 'persistent'}
         anchor="left"
-        open={drawerOpen}
+        open={isMobile ? drawerOpen : drawerOpen}
+        onClose={() => setDrawerOpen(false)}
       >
         <Toolbar>
           <Typography variant="h5" sx={{ fontWeight: 'bold', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
@@ -322,8 +327,8 @@ const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({ children }) =
           display: 'flex',
           flexDirection: 'column',
           bgcolor: 'background.default',
-          width: drawerOpen ? `calc(100% - ${drawerWidth}px)` : '100%',
-          ml: drawerOpen ? 0 : `-${drawerWidth}px`,
+          width: isMobile ? '100%' : (drawerOpen ? `calc(100% - ${drawerWidth}px)` : '100%'),
+          ml: isMobile ? 0 : (drawerOpen ? 0 : `-${drawerWidth}px`),
           minHeight: '100vh',
           transition: (theme) =>
             theme.transitions.create(['margin', 'width'], {
@@ -333,7 +338,7 @@ const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({ children }) =
         }}
       >
         <Toolbar />
-        <Box sx={{ flexGrow: 1, p: 3 }}>
+        <Box sx={{ flexGrow: 1, p: { xs: 1.5, sm: 2, md: 3 } }}>
           {children}
         </Box>
         <Footer />

@@ -516,7 +516,7 @@ const DraftsPage: React.FC = () => {
       ) : (
         <Grid container spacing={3}>
           {drafts.map((draft) => (
-              <Grid item xs={12} md={6} lg={4} key={draft.draft_id}>
+              <Grid item xs={12} sm={6} md={6} lg={6} key={draft.draft_id}>
                 <Paper
                   elevation={0}
                   sx={{
@@ -664,7 +664,7 @@ const DraftsPage: React.FC = () => {
                       <Divider sx={{ my: 2, borderColor: 'rgba(102, 126, 234, 0.15)' }} />
 
                       {/* Time & Author Grid */}
-                      <Box display="grid" gridTemplateColumns="1fr 1fr 1fr" gap={2}>
+                      <Box display="grid" gridTemplateColumns={{ xs: '1fr', sm: '1fr 1fr 1fr' }} gap={2}>
                         {/* Created */}
                         <Box>
                           <Box display="flex" alignItems="center" gap={0.8} mb={0.5}>
@@ -801,7 +801,7 @@ const DraftsPage: React.FC = () => {
                         </Typography>
 
                         {/* Client Name & Industry */}
-                        <Box display="grid" gridTemplateColumns="1fr 1fr" gap={2} mb={2}>
+                        <Box display="grid" gridTemplateColumns={{ xs: '1fr', sm: '1fr 1fr' }} gap={2} mb={2}>
                           {/* Client Name */}
                           <Box>
                             <Box display="flex" alignItems="center" gap={0.8} mb={0.5}>
@@ -870,7 +870,7 @@ const DraftsPage: React.FC = () => {
                         </Box>
 
                         {/* Country & City Grid */}
-                        <Box display="grid" gridTemplateColumns="1fr 1fr" gap={2}>
+                        <Box display="grid" gridTemplateColumns={{ xs: '1fr', sm: '1fr 1fr' }} gap={2}>
                           {/* Country */}
                           {draft.client_metadata.country && (
                             <Box>
