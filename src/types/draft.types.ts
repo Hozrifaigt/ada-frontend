@@ -52,6 +52,7 @@ export interface Draft {
   id: string;
   metadata: DraftMetadata;
   toc: TOCTopic[];
+  toc_chat_history?: Array<{ timestamp: string; user_message: string; ai_response: string }>;
 }
 
 export interface DraftSummary {

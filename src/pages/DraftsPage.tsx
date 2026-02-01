@@ -38,7 +38,6 @@ import {
   Work,
   Description as DescriptionIcon,
   Public,
-  Apartment,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { Country, State } from 'country-state-city';
@@ -250,26 +249,26 @@ const DraftsPage: React.FC = () => {
   }
 
   return (
-    <Container maxWidth="xl">
+    <Container maxWidth="xl" sx={{ pt: 0, mt: -1 }}>
       {/* Header Section */}
-      <Box sx={{ mb: 4 }}>
-        <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+      <Box sx={{ mb: 2 }}>
+        <Box display="flex" justifyContent="space-between" alignItems="center" mb={1.5}>
           <Box>
-            <Typography variant="h4" fontWeight={600} gutterBottom>
+            <Typography variant="h6" fontWeight={600} sx={{ lineHeight: 1.3 }}>
               Policy Drafts
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="caption" color="text.secondary">
               Manage and track your policy documents
             </Typography>
           </Box>
           <Button
             variant="contained"
-            size="large"
+            size="small"
             startIcon={<Add />}
             onClick={() => navigate('/drafts/new')}
             sx={{
               background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              px: 3,
+              px: 2,
             }}
           >
             New Draft
@@ -280,7 +279,7 @@ const DraftsPage: React.FC = () => {
         <Paper
           elevation={0}
           sx={{
-            p: 1,
+            p: 0.5,
             display: 'flex',
             alignItems: 'center',
             border: '1px solid',
@@ -514,7 +513,7 @@ const DraftsPage: React.FC = () => {
           </Button>
         </Paper>
       ) : (
-        <Grid container spacing={3}>
+        <Grid container spacing={2}>
           {drafts.map((draft) => (
               <Grid item xs={12} sm={6} md={6} lg={6} key={draft.draft_id}>
                 <Paper
@@ -523,7 +522,7 @@ const DraftsPage: React.FC = () => {
                     height: '100%',
                     display: 'flex',
                     flexDirection: 'column',
-                    borderRadius: 4,
+                    borderRadius: 3,
                     position: 'relative',
                     overflow: 'hidden',
                     background: '#ffffff',
@@ -532,7 +531,7 @@ const DraftsPage: React.FC = () => {
                     transition: 'all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
                     cursor: 'pointer',
                     '&:hover': {
-                      transform: 'translateY(-12px)',
+                      transform: 'translateY(-6px)',
                       boxShadow: '0 28px 56px rgba(102, 126, 234, 0.18), 0 12px 24px rgba(102, 126, 234, 0.1)',
                       border: '2px solid rgba(102, 126, 234, 0.3)',
                       '& .action-section': {
@@ -547,8 +546,8 @@ const DraftsPage: React.FC = () => {
                   <Box
                     className="card-header"
                     sx={{
-                      p: 3,
-                      pb: 2,
+                      p: 2,
+                      pb: 1.5,
                       background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                       borderRadius: '16px 16px 0 0',
                       transition: 'all 0.4s ease',
@@ -559,11 +558,11 @@ const DraftsPage: React.FC = () => {
                     <Box display="flex" justifyContent="space-between" alignItems="flex-start">
                       <Typography
                         className="card-title"
-                        variant="h5"
+                        variant="h6"
                         fontWeight={700}
                         sx={{
                           color: 'white',
-                          fontSize: '1.35rem',
+                          fontSize: '1rem',
                           lineHeight: 1.3,
                           flex: 1,
                           pr: 2,
@@ -586,373 +585,136 @@ const DraftsPage: React.FC = () => {
                   </Box>
 
                   {/* Card Content */}
-                  <Box sx={{
-                    flexGrow: 1,
-                    p: 3,
-                    pt: 4.5,
-                    backgroundColor: '#f8f9fa',
-                  }}>
-
-                    {/* Policy Details Section */}
-                    <Box
-                      sx={{
-                        mb: 4.5,
-                        p: 2.5,
-                        pt: 3.5,
-                        borderRadius: 2,
-                        background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%)',
-                        border: '2px solid',
-                        borderColor: 'rgba(102, 126, 234, 0.4)',
-                        position: 'relative',
-                        boxShadow: '0 4px 12px rgba(102, 126, 234, 0.15)',
-                      }}
-                    >
-                      <Typography
-                        variant="h6"
-                        sx={{
-                          position: 'absolute',
-                          top: -26,
-                          left: -4,
-                          px: 1.5,
-                          py: 0,
-                          // bgcolor: '#f8f9fa',
-                          color: 'rgb(102, 126, 234)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 0.8,
-                          fontSize: '0.95rem',
-                          fontWeight: 700,
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.5px',
-                        }}
-                      >
-                        📋 Policy Details
-                      </Typography>
-
-                      <Box mb={2}>
-                        {/* Function */}
-                        {draft.function && (
-                          <Box>
-                            <Box display="flex" alignItems="center" gap={0.8} mb={0.5}>
-                              <Work sx={{ fontSize: 14, color: 'rgb(102, 126, 234)' }} />
-                              <Typography
-                                variant="caption"
-                                sx={{
-                                  color: 'rgb(160, 174, 192)',
-                                  fontSize: '0.65rem',
-                                  fontWeight: 600,
-                                  textTransform: 'uppercase',
-                                }}
-                              >
-                                Function
-                              </Typography>
-                            </Box>
-                            <Typography
-                              variant="body2"
-                              sx={{
-                                color: '#000000',
-                                fontSize: '0.75rem',
-                                pl: 2.8,
-                              }}
-                            >
-                              {draft.function}
-                            </Typography>
-                          </Box>
-                        )}
-                      </Box>
-
-                      <Divider sx={{ my: 2, borderColor: 'rgba(102, 126, 234, 0.15)' }} />
-
-                      {/* Time & Author Grid */}
-                      <Box display="grid" gridTemplateColumns={{ xs: '1fr', sm: '1fr 1fr 1fr' }} gap={2}>
-                        {/* Created */}
-                        <Box>
-                          <Box display="flex" alignItems="center" gap={0.8} mb={0.5}>
-                            <CalendarToday sx={{ fontSize: 14, color: 'rgb(102, 126, 234)' }} />
-                            <Typography
-                              variant="caption"
-                              sx={{
-                                color: 'rgb(160, 174, 192)',
-                                fontSize: '0.65rem',
-                                fontWeight: 600,
-                                textTransform: 'uppercase',
-                              }}
-                            >
-                              Created
-                            </Typography>
-                          </Box>
-                          <Typography
-                            variant="body2"
-                            sx={{
-                              color: '#000000',
-                              fontSize: '0.7rem',
-                              pl: 2.8,
-                            }}
-                          >
-                            {formatDate(draft.created_at)}
+                  <Box sx={{ flexGrow: 1, p: 2, backgroundColor: '#f8f9fa' }}>
+                    {/* Function & Author row */}
+                    <Box display="flex" justifyContent="space-between" alignItems="center" mb={1.5}>
+                      {draft.function && (
+                        <Box
+                          sx={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 0.5,
+                            px: 1.25,
+                            py: 0.4,
+                            borderRadius: 1,
+                            bgcolor: 'rgba(102, 126, 234, 0.1)',
+                            border: '1px solid rgba(102, 126, 234, 0.25)',
+                          }}
+                        >
+                          <Work sx={{ fontSize: 13, color: '#667eea' }} />
+                          <Typography sx={{ fontSize: '0.75rem', fontWeight: 600, color: '#667eea' }}>
+                            {draft.function}
                           </Typography>
                         </Box>
-
-                        {/* Updated */}
-                        <Box>
-                          <Box display="flex" alignItems="center" gap={0.8} mb={0.5}>
-                            <AccessTime sx={{ fontSize: 14, color: 'rgb(102, 126, 234)' }} />
-                            <Typography
-                              variant="caption"
-                              sx={{
-                                color: 'rgb(160, 174, 192)',
-                                fontSize: '0.65rem',
-                                fontWeight: 600,
-                                textTransform: 'uppercase',
-                              }}
-                            >
-                              Updated
-                            </Typography>
-                          </Box>
-                          <Typography
-                            variant="body2"
-                            sx={{
-                              color: '#000000',
-                              fontSize: '0.7rem',
-                              pl: 2.8,
-                            }}
-                          >
-                            {getTimeAgo(draft.modified_at)}
-                          </Typography>
-                        </Box>
-
-                        {/* Created By */}
-                        <Box>
-                          <Box display="flex" alignItems="center" gap={0.8} mb={0.5}>
-                            <Avatar
-                              sx={{
-                                width: 14,
-                                height: 14,
-                                fontSize: '0.6rem',
-                                backgroundColor: 'rgb(102, 126, 234)',
-                              }}
-                            >
-                              {(draft.created_by || 'U')[0].toUpperCase()}
-                            </Avatar>
-                            <Typography
-                              variant="caption"
-                              sx={{
-                                color: 'rgb(160, 174, 192)',
-                                fontSize: '0.65rem',
-                                fontWeight: 600,
-                                textTransform: 'uppercase',
-                              }}
-                            >
-                              Author
-                            </Typography>
-                          </Box>
-                          <Typography
-                            variant="body2"
-                            sx={{
-                              color: '#000000',
-                              fontSize: '0.7rem',
-                              pl: 2.8,
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap',
-                            }}
-                            title={draft.created_by || 'Unknown User'}
-                          >
-                            {draft.created_by || 'Unknown'}
-                          </Typography>
-                        </Box>
+                      )}
+                      <Box display="flex" alignItems="center" gap={0.75}>
+                        <Avatar
+                          sx={{
+                            width: 20,
+                            height: 20,
+                            fontSize: '0.6rem',
+                            bgcolor: '#667eea',
+                          }}
+                        >
+                          {(draft.created_by || 'U')[0].toUpperCase()}
+                        </Avatar>
+                        <Typography
+                          sx={{
+                            fontSize: '0.75rem',
+                            color: 'text.secondary',
+                            maxWidth: 120,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
+                          title={draft.created_by || 'Unknown User'}
+                        >
+                          {draft.created_by || 'Unknown'}
+                        </Typography>
                       </Box>
                     </Box>
 
-                    {/* Client Information Section */}
+                    {/* Details section */}
                     {draft.client_metadata && (
                       <Box
-                        sx={{
-                          p: 2.5,
-                          pt: 3.5,
-                          borderRadius: 2,
-                          background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%)',
-                          border: '2px solid',
-                          borderColor: 'rgba(102, 126, 234, 0.4)',
-                          position: 'relative',
-                          boxShadow: '0 4px 12px rgba(102, 126, 234, 0.15)',
-                        }}
+                        display="grid"
+                        gridTemplateColumns="1fr 1fr"
+                        gap={1}
+                        sx={{ mb: 1.5 }}
                       >
-                        <Typography
-                          variant="h6"
-                          sx={{
-                            position: 'absolute',
-                            top: -26,
-                            left: -4,
-                            px: 1.5,
-                            py: 0,
-                            // bgcolor: '#f8f9fa',
-                            color: 'rgb(102, 126, 234)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 0.8,
-                            fontSize: '0.95rem',
-                            fontWeight: 700,
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.5px',
-                          }}
-                        >
-                          🏢 Client Information
-                        </Typography>
-
-                        {/* Client Name & Industry */}
-                        <Box display="grid" gridTemplateColumns={{ xs: '1fr', sm: '1fr 1fr' }} gap={2} mb={2}>
-                          {/* Client Name */}
-                          <Box>
-                            <Box display="flex" alignItems="center" gap={0.8} mb={0.5}>
-                              <Business sx={{ fontSize: 14, color: 'rgb(102, 126, 234)' }} />
-                              <Typography
-                                variant="caption"
-                                sx={{
-                                  color: 'rgb(160, 174, 192)',
-                                  fontSize: '0.65rem',
-                                  fontWeight: 600,
-                                  textTransform: 'uppercase',
-                                }}
-                              >
-                                Client
-                              </Typography>
-                            </Box>
-                            <Typography
-                              variant="body2"
-                              sx={{
-                                color: '#000000',
-                                fontSize: '0.75rem',
-                                pl: 2.8,
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                              }}
-                              title={draft.client_metadata.name}
-                            >
+                        {/* Client */}
+                        <Box display="flex" alignItems="center" gap={0.75} sx={{ p: 0.75, borderRadius: 1.5, bgcolor: 'white', border: '1px solid', borderColor: 'divider' }}>
+                          <Box sx={{ width: 28, height: 28, borderRadius: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'rgba(102, 126, 234, 0.08)', flexShrink: 0 }}>
+                            <Business sx={{ fontSize: 15, color: '#667eea' }} />
+                          </Box>
+                          <Box sx={{ minWidth: 0 }}>
+                            <Typography sx={{ fontSize: '0.6rem', color: 'text.disabled', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.3px', lineHeight: 1.2 }}>Client</Typography>
+                            <Typography sx={{ fontSize: '0.75rem', fontWeight: 500, color: 'text.primary', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={draft.client_metadata.name}>
                               {draft.client_metadata.name}
                             </Typography>
                           </Box>
+                        </Box>
 
-                          {/* Industry */}
-                          {draft.client_metadata.industry && (
-                            <Box>
-                              <Box display="flex" alignItems="center" gap={0.8} mb={0.5}>
-                                <Business sx={{ fontSize: 14, color: 'rgb(102, 126, 234)' }} />
-                                <Typography
-                                  variant="caption"
-                                  sx={{
-                                    color: 'rgb(160, 174, 192)',
-                                    fontSize: '0.65rem',
-                                    fontWeight: 600,
-                                    textTransform: 'uppercase',
-                                  }}
-                                >
-                                  Industry
-                                </Typography>
-                              </Box>
-                              <Typography
-                                variant="body2"
-                                sx={{
-                                  color: '#000000',
-                                  fontSize: '0.75rem',
-                                  pl: 2.8,
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                  whiteSpace: 'nowrap',
-                                }}
-                                title={draft.client_metadata.industry}
-                              >
+                        {/* Industry */}
+                        {draft.client_metadata.industry && (
+                          <Box display="flex" alignItems="center" gap={0.75} sx={{ p: 0.75, borderRadius: 1.5, bgcolor: 'white', border: '1px solid', borderColor: 'divider' }}>
+                            <Box sx={{ width: 28, height: 28, borderRadius: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'rgba(118, 75, 162, 0.08)', flexShrink: 0 }}>
+                              <Work sx={{ fontSize: 15, color: '#764ba2' }} />
+                            </Box>
+                            <Box sx={{ minWidth: 0 }}>
+                              <Typography sx={{ fontSize: '0.6rem', color: 'text.disabled', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.3px', lineHeight: 1.2 }}>Industry</Typography>
+                              <Typography sx={{ fontSize: '0.75rem', fontWeight: 500, color: 'text.primary', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                 {draft.client_metadata.industry}
                               </Typography>
                             </Box>
-                          )}
-                        </Box>
+                          </Box>
+                        )}
 
-                        {/* Country & City Grid */}
-                        <Box display="grid" gridTemplateColumns={{ xs: '1fr', sm: '1fr 1fr' }} gap={2}>
-                          {/* Country */}
-                          {draft.client_metadata.country && (
-                            <Box>
-                              <Box display="flex" alignItems="center" gap={0.8} mb={0.5}>
-                                <Public sx={{ fontSize: 14, color: 'rgb(102, 126, 234)' }} />
-                                <Typography
-                                  variant="caption"
-                                  sx={{
-                                    color: 'rgb(160, 174, 192)',
-                                    fontSize: '0.65rem',
-                                    fontWeight: 600,
-                                    textTransform: 'uppercase',
-                                  }}
-                                >
-                                  Country
-                                </Typography>
-                              </Box>
-                              <Typography
-                                variant="body2"
-                                sx={{
-                                  color: '#000000',
-                                  fontSize: '0.7rem',
-                                  pl: 2.8,
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                  whiteSpace: 'nowrap',
-                                }}
-                                title={draft.client_metadata.country}
-                              >
-                                {draft.client_metadata.country}
+                        {/* Location */}
+                        {draft.client_metadata.country && (
+                          <Box display="flex" alignItems="center" gap={0.75} sx={{ p: 0.75, borderRadius: 1.5, bgcolor: 'white', border: '1px solid', borderColor: 'divider' }}>
+                            <Box sx={{ width: 28, height: 28, borderRadius: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'rgba(16, 185, 129, 0.08)', flexShrink: 0 }}>
+                              <Public sx={{ fontSize: 15, color: '#10b981' }} />
+                            </Box>
+                            <Box sx={{ minWidth: 0 }}>
+                              <Typography sx={{ fontSize: '0.6rem', color: 'text.disabled', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.3px', lineHeight: 1.2 }}>Location</Typography>
+                              <Typography sx={{ fontSize: '0.75rem', fontWeight: 500, color: 'text.primary', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {draft.client_metadata.city ? `${draft.client_metadata.city}, ${draft.client_metadata.country}` : draft.client_metadata.country}
                               </Typography>
                             </Box>
-                          )}
+                          </Box>
+                        )}
 
-                          {/* City */}
-                          {draft.client_metadata.city && (
-                            <Box>
-                              <Box display="flex" alignItems="center" gap={0.8} mb={0.5}>
-                                <Apartment sx={{ fontSize: 14, color: 'rgb(102, 126, 234)' }} />
-                                <Typography
-                                  variant="caption"
-                                  sx={{
-                                    color: 'rgb(102, 126, 234)',
-                                    fontSize: '0.65rem',
-                                    fontWeight: 600,
-                                    textTransform: 'uppercase',
-                                  }}
-                                >
-                                  City
-                                </Typography>
-                              </Box>
-                              <Typography
-                                variant="body2"
-                                sx={{
-                                  color: '#000000',
-                                  fontSize: '0.7rem',
-                                  pl: 2.8,
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                  whiteSpace: 'nowrap',
-                                }}
-                                title={draft.client_metadata.city}
-                              >
-                                {draft.client_metadata.city}
-                              </Typography>
-                            </Box>
-                          )}
+                        {/* Updated */}
+                        <Box display="flex" alignItems="center" gap={0.75} sx={{ p: 0.75, borderRadius: 1.5, bgcolor: 'white', border: '1px solid', borderColor: 'divider' }}>
+                          <Box sx={{ width: 28, height: 28, borderRadius: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'rgba(245, 158, 11, 0.08)', flexShrink: 0 }}>
+                            <AccessTime sx={{ fontSize: 15, color: '#f59e0b' }} />
+                          </Box>
+                          <Box sx={{ minWidth: 0 }}>
+                            <Typography sx={{ fontSize: '0.6rem', color: 'text.disabled', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.3px', lineHeight: 1.2 }}>Updated</Typography>
+                            <Typography sx={{ fontSize: '0.75rem', fontWeight: 500, color: 'text.primary' }}>
+                              {getTimeAgo(draft.modified_at)}
+                            </Typography>
+                          </Box>
                         </Box>
                       </Box>
                     )}
+
                   </Box>
 
                   {/* Action Section */}
                   <Box
                     className="action-section"
                     sx={{
-                      p: 3,
-                      pt: 0,
+                      px: 2,
+                      py: 1.5,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
                       transition: 'all 0.4s ease',
                     }}
                   >
-                    <Box display="flex" gap={1.5} justifyContent="center" alignItems="stretch">
+                    <Box display="flex" gap={1.5} justifyContent="center" alignItems="center" width="100%">
                       <Button
                         size="small"
                         variant="contained"
@@ -965,7 +727,7 @@ const DraftsPage: React.FC = () => {
                           background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                           textTransform: 'none',
                           px: 3,
-                          py: 1.2,
+                          height: 40,
                           borderRadius: 3,
                           fontWeight: 600,
                           fontSize: '0.85rem',
@@ -991,8 +753,8 @@ const DraftsPage: React.FC = () => {
                             border: '2px solid #e2e8f0',
                             borderRadius: 2,
                             color: '#667eea',
-                            width: 44,
-                            height: 44,
+                            width: 40,
+                            height: 40,
                             '&:hover': {
                               bgcolor: 'rgba(102, 126, 234, 0.1)',
                               borderColor: '#667eea',
@@ -1014,8 +776,8 @@ const DraftsPage: React.FC = () => {
                             border: '2px solid #fecaca',
                             borderRadius: 2,
                             color: '#ef4444',
-                            width: 44,
-                            height: 44,
+                            width: 40,
+                            height: 40,
                             '&:hover': {
                               bgcolor: '#fee2e2',
                               borderColor: '#f87171',

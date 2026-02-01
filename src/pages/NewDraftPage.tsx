@@ -7,9 +7,6 @@ import {
   Button,
   Grid,
   Alert,
-  Stepper,
-  Step,
-  StepLabel,
   Divider,
   Container,
   CircularProgress,
@@ -19,6 +16,8 @@ import {
   MenuItem,
   InputLabel,
   Slider,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import {
   Save,
@@ -27,7 +26,6 @@ import {
   Description,
   CheckCircleOutline,
   EditNote,
-  AutoAwesome,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Country, State } from 'country-state-city';
@@ -52,6 +50,8 @@ const INDUSTRY_OPTIONS = [
 const NewDraftPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const theme = useTheme();
+  const isCompact = useMediaQuery(theme.breakpoints.down('xl'));
   const editDraft = (location.state as { editDraft?: Draft })?.editDraft;
 
   const [loading, setLoading] = useState(false);
@@ -186,14 +186,14 @@ const NewDraftPage: React.FC = () => {
 
   return (
     <Container maxWidth="lg">
-      <Box sx={{ mb: 4 }}>
-        <Box display="flex" alignItems="center" gap={2} mb={2}>
-          <Description sx={{ fontSize: 40, color: 'primary.main' }} />
+      <Box sx={{ mb: isCompact ? 1.5 : 2 }}>
+        <Box display="flex" alignItems="center" gap={isCompact ? 1 : 1.5} mb={isCompact ? 1 : 1.5}>
+          <Description sx={{ fontSize: isCompact ? 22 : 28, color: 'primary.main' }} />
           <Box>
-            <Typography variant="h4" fontWeight={600}>
+            <Typography variant={isCompact ? 'body1' : 'h6'} fontWeight={600}>
               {editDraft ? 'Edit Draft Metadata' : 'Create New Policy Draft'}
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="caption" color="text.secondary">
               {editDraft
                 ? 'Update the metadata and details for your policy document'
                 : 'Initialize a new policy document with AI-powered assistance'}
@@ -214,36 +214,37 @@ const NewDraftPage: React.FC = () => {
         )}
       </Box>
 
-      <Grid container spacing={3}>
+      <Grid container spacing={2}>
         <Grid item xs={12} lg={8}>
           <Paper
             elevation={0}
             sx={{
-              p: 4,
+              p: isCompact ? 2 : 2.5,
               border: '1px solid',
               borderColor: 'divider',
               borderRadius: 2
             }}
           >
             <form onSubmit={handleSubmit}>
-              <Box sx={{ mb: 4 }}>
-                <Box display="flex" alignItems="center" gap={1} mb={3}>
-                  <EditNote color="primary" />
-                  <Typography variant="h6" fontWeight={500}>
+              <Box sx={{ mb: isCompact ? 1.5 : 2.5 }}>
+                <Box display="flex" alignItems="center" gap={1} mb={isCompact ? 1 : 2}>
+                  <EditNote color="primary" sx={{ fontSize: isCompact ? 18 : 20 }} />
+                  <Typography variant={isCompact ? 'body2' : 'body1'} fontWeight={600}>
                     Policy Information
                   </Typography>
                 </Box>
 
-                <Grid container spacing={3}>
+                <Grid container spacing={isCompact ? 1.5 : 3}>
                   <Grid item xs={12}>
                     <TextField
                       required
                       fullWidth
+                      size={isCompact ? 'small' : 'medium'}
                       label="Policy Title"
                       value={formData.title}
                       onChange={handleChange('title')}
                       placeholder="Enter a descriptive title for your policy"
-                      helperText="This will be the main title of your policy document"
+                      helperText={isCompact ? undefined : "This will be the main title of your policy document"}
                       InputProps={{
                         sx: { backgroundColor: 'background.paper' }
                       }}
@@ -251,7 +252,7 @@ const NewDraftPage: React.FC = () => {
                   </Grid>
 
                   <Grid item xs={12} md={6}>
-                    <FormControl fullWidth required>
+                    <FormControl fullWidth required size={isCompact ? 'small' : 'medium'}>
                       <InputLabel>Function</InputLabel>
                       <Select
                         value={formData.function}
@@ -272,12 +273,13 @@ const NewDraftPage: React.FC = () => {
                     <TextField
                       fullWidth
                       multiline
-                      rows={3}
+                      size={isCompact ? 'small' : 'medium'}
+                      rows={isCompact ? 2 : 3}
                       label="Client Specific Requests"
                       value={formData.client_specific_requests}
                       onChange={handleChange('client_specific_requests')}
                       placeholder="Describe any specific requirements or customizations for this client"
-                      helperText="Optional: Add any unique business needs, industry-specific requirements, or custom policies"
+                      helperText={isCompact ? undefined : "Optional: Add any unique business needs, industry-specific requirements, or custom policies"}
                       InputProps={{
                         sx: { backgroundColor: 'background.paper' }
                       }}
@@ -288,12 +290,13 @@ const NewDraftPage: React.FC = () => {
                     <TextField
                       fullWidth
                       multiline
-                      rows={3}
+                      size={isCompact ? 'small' : 'medium'}
+                      rows={isCompact ? 2 : 3}
                       label="Sector Specific Comments"
                       value={formData.sector_specific_comments}
                       onChange={handleChange('sector_specific_comments')}
                       placeholder="Add any sector-specific considerations or requirements"
-                      helperText="Optional: Include any sector-specific regulations, standards, or best practices"
+                      helperText={isCompact ? undefined : "Optional: Include any sector-specific regulations, standards, or best practices"}
                       InputProps={{
                         sx: { backgroundColor: 'background.paper' }
                       }}
@@ -301,7 +304,7 @@ const NewDraftPage: React.FC = () => {
                   </Grid>
 
                   <Grid item xs={12} md={6}>
-                    <FormControl fullWidth required>
+                    <FormControl fullWidth required size={isCompact ? 'small' : 'medium'}>
                       <InputLabel>Regulations</InputLabel>
                       <Select
                         value={formData.regulations}
@@ -316,7 +319,7 @@ const NewDraftPage: React.FC = () => {
 
                   <Grid item xs={12} md={6}>
                     <FormControl fullWidth>
-                      <FormLabel sx={{ mb: 2 }}>
+                      <FormLabel sx={{ mb: isCompact ? 1 : 2, fontSize: isCompact ? '0.8rem' : undefined }}>
                         Level of Details
                       </FormLabel>
                       <Box sx={{ px: 2 }}>
@@ -342,21 +345,22 @@ const NewDraftPage: React.FC = () => {
                 </Grid>
               </Box>
 
-              <Divider sx={{ my: 4 }} />
+              <Divider sx={{ my: isCompact ? 1.5 : 2.5 }} />
 
-              <Box sx={{ mb: 4 }}>
-                <Box display="flex" alignItems="center" gap={1} mb={3}>
-                  <BusinessCenter color="primary" />
-                  <Typography variant="h6" fontWeight={500}>
+              <Box sx={{ mb: isCompact ? 1.5 : 2.5 }}>
+                <Box display="flex" alignItems="center" gap={1} mb={isCompact ? 1 : 2}>
+                  <BusinessCenter color="primary" sx={{ fontSize: isCompact ? 18 : 20 }} />
+                  <Typography variant={isCompact ? 'body2' : 'body1'} fontWeight={600}>
                     Client Information
                   </Typography>
                 </Box>
 
-                <Grid container spacing={3}>
+                <Grid container spacing={isCompact ? 1.5 : 2}>
                   <Grid item xs={12} md={6}>
                     <TextField
                       required
                       fullWidth
+                      size={isCompact ? 'small' : 'medium'}
                       label="Client Name"
                       value={formData.client_metadata.name}
                       onChange={handleChange('client_metadata.name')}
@@ -368,7 +372,7 @@ const NewDraftPage: React.FC = () => {
                   </Grid>
 
                   <Grid item xs={12} md={6}>
-                    <FormControl fullWidth required>
+                    <FormControl fullWidth required size={isCompact ? 'small' : 'medium'}>
                       <InputLabel>Industry</InputLabel>
                       <Select
                         value={formData.client_metadata.industry}
@@ -394,7 +398,7 @@ const NewDraftPage: React.FC = () => {
                   </Grid>
 
                   <Grid item xs={12} md={6}>
-                    <FormControl fullWidth required>
+                    <FormControl fullWidth required size={isCompact ? 'small' : 'medium'}>
                       <InputLabel>Country</InputLabel>
                       <Select
                         value={selectedCountryCode}
@@ -412,7 +416,7 @@ const NewDraftPage: React.FC = () => {
                   </Grid>
 
                   <Grid item xs={12} md={6}>
-                    <FormControl fullWidth required>
+                    <FormControl fullWidth required size={isCompact ? 'small' : 'medium'}>
                       <InputLabel>City / Emirate</InputLabel>
                       <Select
                         value={formData.client_metadata.city}
@@ -436,30 +440,30 @@ const NewDraftPage: React.FC = () => {
                 </Grid>
               </Box>
 
-              <Divider sx={{ my: 4 }} />
+              <Divider sx={{ my: isCompact ? 2 : 4 }} />
 
               <Box display="flex" justifyContent="space-between" alignItems="center">
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="caption" color="text.secondary">
                   * Required fields
                 </Typography>
-                <Box display="flex" gap={2}>
+                <Box display="flex" gap={isCompact ? 1 : 2}>
                   <Button
                     variant="outlined"
-                    size="large"
+                    size={isCompact ? 'small' : 'large'}
                     startIcon={<Cancel />}
                     onClick={() => navigate('/drafts')}
                     disabled={loading}
-                    sx={{ minWidth: 120 }}
+                    sx={{ minWidth: isCompact ? 90 : 120 }}
                   >
                     Cancel
                   </Button>
                   <Button
                     type="submit"
                     variant="contained"
-                    size="large"
-                    startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <Save />}
+                    size={isCompact ? 'small' : 'large'}
+                    startIcon={loading ? <CircularProgress size={isCompact ? 16 : 20} color="inherit" /> : <Save />}
                     disabled={loading || !isFormValid()}
-                    sx={{ minWidth: 150 }}
+                    sx={{ minWidth: isCompact ? 120 : 150 }}
                   >
                     {loading
                       ? (editDraft ? 'Updating...' : 'Creating...')
@@ -475,28 +479,7 @@ const NewDraftPage: React.FC = () => {
           <Paper
             elevation={0}
             sx={{
-              p: 3,
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              color: 'white',
-              borderRadius: 2,
-              mb: 3
-            }}
-          >
-            <Box display="flex" alignItems="center" gap={1} mb={2}>
-              <AutoAwesome sx={{ color: 'white' }} />
-              <Typography variant="h6" fontWeight={500}>
-                AI-Powered Assistance
-              </Typography>
-            </Box>
-            <Typography variant="body2" sx={{ opacity: 0.95 }}>
-              Our AI analyzes your requirements and suggests relevant content based on similar policies and best practices in your industry.
-            </Typography>
-          </Paper>
-
-          <Paper
-            elevation={0}
-            sx={{
-              p: 3,
+              p: isCompact ? 1.5 : 2,
               border: '1px solid',
               borderColor: 'divider',
               borderRadius: 2,
@@ -504,59 +487,35 @@ const NewDraftPage: React.FC = () => {
             }}
           >
             <Typography
-              variant="h6"
+              variant={isCompact ? 'body2' : 'body1'}
               gutterBottom
-              fontWeight={500}
+              fontWeight={600}
               sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
             >
-              <CheckCircleOutline color="success" />
+              <CheckCircleOutline color="success" sx={{ fontSize: isCompact ? 18 : 20 }} />
               Next Steps
             </Typography>
 
-            <Typography variant="body2" color="text.secondary" paragraph>
+            <Typography variant="caption" color="text.secondary" paragraph>
               After creating your draft, you'll be able to:
             </Typography>
 
-            <Box component="ul" sx={{ pl: 2, '& li': { mb: 1.5 } }}>
-              <Typography component="li" variant="body2" color="text.secondary">
+            <Box component="ul" sx={{ pl: 2, '& li': { mb: isCompact ? 0.5 : 0.75 } }}>
+              <Typography component="li" variant="caption" color="text.secondary">
                 <strong>Review TOC:</strong> Edit the AI-suggested table of contents
               </Typography>
-              <Typography component="li" variant="body2" color="text.secondary">
+              <Typography component="li" variant="caption" color="text.secondary">
                 <strong>Generate Content:</strong> Create section content with AI
               </Typography>
-              <Typography component="li" variant="body2" color="text.secondary">
+              <Typography component="li" variant="caption" color="text.secondary">
                 <strong>Refine & Edit:</strong> Customize the generated content
               </Typography>
-              <Typography component="li" variant="body2" color="text.secondary">
+              <Typography component="li" variant="caption" color="text.secondary">
                 <strong>Export:</strong> Download as Word document
               </Typography>
             </Box>
           </Paper>
 
-          <Box sx={{ mt: 3 }}>
-            <Stepper orientation="vertical" activeStep={0}>
-              <Step>
-                <StepLabel>
-                  <Typography variant="body2">Initialize Draft</Typography>
-                </StepLabel>
-              </Step>
-              <Step>
-                <StepLabel>
-                  <Typography variant="body2">Structure Content</Typography>
-                </StepLabel>
-              </Step>
-              <Step>
-                <StepLabel>
-                  <Typography variant="body2">Generate Sections</Typography>
-                </StepLabel>
-              </Step>
-              <Step>
-                <StepLabel>
-                  <Typography variant="body2">Export Document</Typography>
-                </StepLabel>
-              </Step>
-            </Stepper>
-          </Box>
         </Grid>
       </Grid>
     </Container>
