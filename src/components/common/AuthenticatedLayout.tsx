@@ -15,6 +15,8 @@ import {
   Divider,
   Menu,
   MenuItem,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -33,12 +35,14 @@ interface AuthenticatedLayoutProps {
   children: ReactNode;
 }
 
-const drawerWidth = 240;
+const drawerWidth = 200;
 
 const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { instance, accounts } = useMsal();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [drawerOpen, setDrawerOpen] = useState(true);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
@@ -150,8 +154,8 @@ const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({ children }) =
       <AppBar
         position="fixed"
         sx={{
-          width: drawerOpen ? `calc(100% - ${drawerWidth}px)` : '100%',
-          ml: drawerOpen ? `${drawerWidth}px` : 0,
+          width: isMobile ? '100%' : (drawerOpen ? `calc(100% - ${drawerWidth}px)` : '100%'),
+          ml: isMobile ? 0 : (drawerOpen ? `${drawerWidth}px` : 0),
           background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
           transition: (theme) =>
             theme.transitions.create(['margin', 'width'], {
@@ -160,29 +164,30 @@ const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({ children }) =
             }),
         }}
       >
-        <Toolbar>
+        <Toolbar variant="dense" sx={{ minHeight: 48 }}>
           <IconButton
             color="inherit"
             aria-label="toggle drawer"
             onClick={handleDrawerToggle}
             edge="start"
-            sx={{ mr: 2 }}
+            sx={{ mr: 1 }}
+            size="small"
           >
             {drawerOpen ? <ChevronLeft /> : <MenuIcon />}
           </IconButton>
 
-          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
+          <Typography variant="body1" fontWeight={600} noWrap component="div" sx={{ flexGrow: 1 }}>
             ADA Policy Drafting
           </Typography>
 
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Typography variant="body2" sx={{ color: 'white', fontWeight: 500 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <Typography variant="caption" sx={{ color: 'white', fontWeight: 500, display: { xs: 'none', sm: 'block' } }}>
               {user.name || 'User'}
             </Typography>
             <IconButton onClick={handleProfileMenu} sx={{ p: 0 }}>
               <Avatar sx={{
-                width: 36,
-                height: 36,
+                width: 30,
+                height: 30,
                 bgcolor: 'rgba(255, 255, 255, 0.95)',
                 color: '#667eea',
                 fontWeight: 600,
@@ -240,28 +245,30 @@ const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({ children }) =
               }),
           },
         }}
-        variant="persistent"
+        variant={isMobile ? 'temporary' : 'persistent'}
         anchor="left"
-        open={drawerOpen}
+        open={isMobile ? drawerOpen : drawerOpen}
+        onClose={() => setDrawerOpen(false)}
       >
-        <Toolbar>
-          <Typography variant="h5" sx={{ fontWeight: 'bold', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+        <Toolbar variant="dense" sx={{ minHeight: 48 }}>
+          <Typography variant="body1" sx={{ fontWeight: 'bold', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
             ADA
           </Typography>
         </Toolbar>
         <Divider />
 
         <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
-          <List sx={{ flex: 0, py: 1 }}>
+          <List sx={{ flex: 0, py: 0.5 }} dense>
             {menuItems.map((item) => (
               <ListItem key={item.text} disablePadding>
                 <ListItemButton
                   selected={location.pathname === item.path}
                   onClick={() => navigate(item.path)}
                   sx={{
-                    mx: 1,
-                    borderRadius: 2,
-                    mb: 0.5,
+                    mx: 0.75,
+                    borderRadius: 1.5,
+                    mb: 0.25,
+                    py: 0.75,
                     '&:hover': {
                       backgroundColor: 'rgba(102, 126, 234, 0.08)',
                     },
@@ -280,12 +287,12 @@ const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({ children }) =
                   <ListItemIcon
                     sx={{
                       color: location.pathname === item.path ? 'white' : '#667eea',
-                      minWidth: 40,
+                      minWidth: 32,
                     }}
                   >
-                    {item.icon}
+                    {React.cloneElement(item.icon as React.ReactElement, { sx: { fontSize: 20 } })}
                   </ListItemIcon>
-                  <ListItemText primary={item.text} sx={{ '& .MuiTypography-root': { fontWeight: location.pathname === item.path ? 600 : 400 } }} />
+                  <ListItemText primary={item.text} sx={{ '& .MuiTypography-root': { fontWeight: location.pathname === item.path ? 600 : 400, fontSize: '0.85rem' } }} />
                 </ListItemButton>
               </ListItem>
             ))}
@@ -294,11 +301,12 @@ const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({ children }) =
           <Box sx={{ flexGrow: 1 }} />
 
           <Divider />
-          <Box sx={{ p: 1, pb: 2 }}>
+          <Box sx={{ p: 0.75, pb: 1.5 }}>
             <ListItemButton
               onClick={handleLogout}
               sx={{
-                borderRadius: 2,
+                borderRadius: 1.5,
+                py: 0.75,
                 backgroundColor: 'rgba(239, 68, 68, 0.05)',
                 color: '#ef4444',
                 '&:hover': {
@@ -306,10 +314,10 @@ const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({ children }) =
                 },
               }}
             >
-              <ListItemIcon sx={{ color: '#ef4444', minWidth: 40 }}>
-                <Logout />
+              <ListItemIcon sx={{ color: '#ef4444', minWidth: 32 }}>
+                <Logout sx={{ fontSize: 20 }} />
               </ListItemIcon>
-              <ListItemText primary="Logout" />
+              <ListItemText primary="Logout" sx={{ '& .MuiTypography-root': { fontSize: '0.85rem' } }} />
             </ListItemButton>
           </Box>
         </Box>
@@ -322,8 +330,8 @@ const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({ children }) =
           display: 'flex',
           flexDirection: 'column',
           bgcolor: 'background.default',
-          width: drawerOpen ? `calc(100% - ${drawerWidth}px)` : '100%',
-          ml: drawerOpen ? 0 : `-${drawerWidth}px`,
+          width: isMobile ? '100%' : (drawerOpen ? `calc(100% - ${drawerWidth}px)` : '100%'),
+          ml: isMobile ? 0 : (drawerOpen ? 0 : `-${drawerWidth}px`),
           minHeight: '100vh',
           transition: (theme) =>
             theme.transitions.create(['margin', 'width'], {
@@ -332,8 +340,8 @@ const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({ children }) =
             }),
         }}
       >
-        <Toolbar />
-        <Box sx={{ flexGrow: 1, p: 3 }}>
+        <Toolbar variant="dense" sx={{ minHeight: 48 }} />
+        <Box sx={{ flexGrow: 1, p: { xs: 1.5, sm: 2, md: 3 } }}>
           {children}
         </Box>
         <Footer />

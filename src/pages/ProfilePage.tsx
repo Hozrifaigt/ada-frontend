@@ -7,50 +7,50 @@ const ProfilePage: React.FC = () => {
 
   return (
     <Box>
-      <Typography variant="h4" gutterBottom>
+      <Typography variant="h6" fontWeight={600} gutterBottom>
         Profile
       </Typography>
 
-      <Grid container spacing={3}>
+      <Grid container spacing={2}>
         <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 3, textAlign: 'center' }}>
+          <Paper sx={{ p: 2, textAlign: 'center' }}>
             <Avatar
               sx={{
-                width: 120,
-                height: 120,
+                width: 80,
+                height: 80,
                 bgcolor: 'primary.main',
-                fontSize: '3rem',
+                fontSize: '2rem',
                 mx: 'auto',
-                mb: 2,
+                mb: 1.5,
               }}
             >
               {(user.name || 'U')[0].toUpperCase()}
             </Avatar>
-            <Typography variant="h5" gutterBottom>
+            <Typography variant="body1" fontWeight={600} gutterBottom>
               {user.name || 'User Name'}
             </Typography>
-            <Typography variant="body2" color="text.secondary" gutterBottom>
+            <Typography variant="caption" color="text.secondary" gutterBottom>
               {user.email || 'user@example.com'}
             </Typography>
           </Paper>
         </Grid>
 
         <Grid item xs={12} md={8}>
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
+          <Paper sx={{ p: 2 }}>
+            <Typography variant="body1" fontWeight={600} gutterBottom>
               User Information
             </Typography>
-            <Divider sx={{ mb: 2 }} />
+            <Divider sx={{ mb: 1.5 }} />
 
-            <Grid container spacing={2}>
+            <Grid container spacing={1.5}>
               <Grid item xs={12}>
-                <Box display="flex" alignItems="center" gap={2}>
-                  <Badge color="action" />
+                <Box display="flex" alignItems="center" gap={1.5}>
+                  <Badge color="action" sx={{ fontSize: 20 }} />
                   <Box>
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography variant="caption" color="text.secondary">
                       Full Name
                     </Typography>
-                    <Typography variant="body1">
+                    <Typography variant="body2">
                       {user.name || 'Demo User'}
                     </Typography>
                   </Box>
@@ -58,13 +58,13 @@ const ProfilePage: React.FC = () => {
               </Grid>
 
               <Grid item xs={12}>
-                <Box display="flex" alignItems="center" gap={2}>
-                  <Email color="action" />
+                <Box display="flex" alignItems="center" gap={1.5}>
+                  <Email color="action" sx={{ fontSize: 20 }} />
                   <Box>
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography variant="caption" color="text.secondary">
                       Email Address
                     </Typography>
-                    <Typography variant="body1">
+                    <Typography variant="body2">
                       {user.email || 'user@example.com'}
                     </Typography>
                   </Box>
@@ -72,13 +72,13 @@ const ProfilePage: React.FC = () => {
               </Grid>
 
               <Grid item xs={12}>
-                <Box display="flex" alignItems="center" gap={2}>
-                  <Business color="action" />
+                <Box display="flex" alignItems="center" gap={1.5}>
+                  <Business color="action" sx={{ fontSize: 20 }} />
                   <Box>
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography variant="caption" color="text.secondary">
                       Organization
                     </Typography>
-                    <Typography variant="body1">
+                    <Typography variant="body2">
                       Grant Thornton
                     </Typography>
                   </Box>

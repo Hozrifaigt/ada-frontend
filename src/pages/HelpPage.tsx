@@ -89,37 +89,41 @@ const HelpPage: React.FC = () => {
 
   return (
     <Box>
-      <Typography variant="h4" gutterBottom>
+      <Typography variant="h6" fontWeight={600} gutterBottom>
         Help & Documentation
       </Typography>
 
-      <Paper sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h5" gutterBottom>
+      <Paper sx={{ p: 2, mb: 2 }}>
+        <Typography variant="body1" fontWeight={600} gutterBottom>
           Getting Started
         </Typography>
-        <Typography variant="body1" paragraph color="text.secondary">
+        <Typography variant="caption" color="text.secondary" paragraph>
           Follow these steps to create your first policy document:
         </Typography>
 
         <Stepper activeStep={activeStep} orientation="vertical">
           {steps.map((step, index) => (
             <Step key={step.label}>
-              <StepLabel>{step.label}</StepLabel>
+              <StepLabel>
+                <Typography variant="body2">{step.label}</Typography>
+              </StepLabel>
               <StepContent>
-                <Typography>{step.description}</Typography>
-                <Box sx={{ mb: 2, mt: 2 }}>
+                <Typography variant="body2">{step.description}</Typography>
+                <Box sx={{ mb: 1, mt: 1 }}>
                   <Button
                     variant="contained"
+                    size="small"
                     onClick={handleNext}
-                    sx={{ mt: 1, mr: 1 }}
+                    sx={{ mt: 0.5, mr: 1 }}
                     disabled={index === steps.length - 1}
                   >
                     {index === steps.length - 1 ? 'Finish' : 'Continue'}
                   </Button>
                   <Button
+                    size="small"
                     disabled={index === 0}
                     onClick={handleBack}
-                    sx={{ mt: 1, mr: 1 }}
+                    sx={{ mt: 0.5, mr: 1 }}
                   >
                     Back
                   </Button>
@@ -129,27 +133,27 @@ const HelpPage: React.FC = () => {
           ))}
         </Stepper>
         {activeStep === steps.length - 1 && (
-          <Paper square elevation={0} sx={{ p: 3 }}>
-            <Typography>All steps completed - you&apos;re ready to create policies!</Typography>
-            <Button onClick={handleReset} sx={{ mt: 1, mr: 1 }}>
+          <Paper square elevation={0} sx={{ p: 2 }}>
+            <Typography variant="body2">All steps completed - you&apos;re ready to create policies!</Typography>
+            <Button size="small" onClick={handleReset} sx={{ mt: 0.5, mr: 1 }}>
               Reset
             </Button>
           </Paper>
         )}
       </Paper>
 
-      <Paper sx={{ p: 3 }}>
-        <Typography variant="h5" gutterBottom>
+      <Paper sx={{ p: 2 }}>
+        <Typography variant="body1" fontWeight={600} gutterBottom>
           Frequently Asked Questions
         </Typography>
 
           {faqs.map((faq, index) => (
             <Accordion key={index}>
-              <AccordionSummary expandIcon={<ExpandMore />}>
-                <Typography variant="h6">{faq.question}</Typography>
+              <AccordionSummary expandIcon={<ExpandMore />} sx={{ minHeight: 40, '& .MuiAccordionSummary-content': { my: 0.75 } }}>
+                <Typography variant="body2" fontWeight={500}>{faq.question}</Typography>
               </AccordionSummary>
-              <AccordionDetails>
-                <Typography>{faq.answer}</Typography>
+              <AccordionDetails sx={{ py: 1 }}>
+                <Typography variant="body2">{faq.answer}</Typography>
               </AccordionDetails>
             </Accordion>
           ))}

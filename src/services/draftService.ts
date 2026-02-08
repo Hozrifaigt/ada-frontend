@@ -79,9 +79,29 @@ export const draftService = {
     return response.data;
   },
 
-  async getDrafts(): Promise<{ drafts: DraftSummary[]; total: number }> {
+  async getDrafts(filters?: {
+    title?: string;
+    country?: string;
+    city?: string;
+    created_by?: string;
+    industry?: string;
+    function?: string;
+  }): Promise<{ drafts: DraftSummary[]; total: number }> {
     try {
-      const response = await apiClient.get('/api/v1/drafts/');
+      // Build query string from filters
+      const params = new URLSearchParams();
+      if (filters) {
+        Object.entries(filters).forEach(([key, value]) => {
+          if (value) {
+            params.append(key, value);
+          }
+        });
+      }
+
+      const queryString = params.toString();
+      const url = queryString ? `/api/v1/drafts/?${queryString}` : '/api/v1/drafts/';
+
+      const response = await apiClient.get(url);
       return response.data || { drafts: [], total: 0 };
     } catch (error) {
       console.error('Error fetching drafts:', error);
@@ -97,6 +117,10 @@ export const draftService = {
 
   async updateTOC(id: string, data: UpdateTOCRequest): Promise<void> {
     await apiClient.put(`/api/v1/drafts/${id}/toc`, data);
+  },
+
+  async updateDraftMetadata(id: string, data: CreateDraftRequest): Promise<void> {
+    await apiClient.put(`/api/v1/drafts/${id}/metadata`, data);
   },
 
   async generateContent(
@@ -182,4 +206,15 @@ export const draftService = {
     );
     return response.data;
   },
+
+  async saveTocChatHistory(
+    draftId: string,
+    conversationHistory: Array<{ user_message: string; ai_response: string; timestamp?: string }>
+  ): Promise<void> {
+    await apiClient.put(`/api/v1/drafts/${draftId}/toc/chat-history`, {
+      conversation_history: conversationHistory,
+    });
+  },
+
+  // Policy type methods removed - no longer using Excel templates
 };
