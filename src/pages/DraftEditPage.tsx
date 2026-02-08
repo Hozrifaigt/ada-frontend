@@ -19,6 +19,8 @@ import {
   Container,
   Snackbar,
   Fade,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import {
   ArrowBack,
@@ -94,7 +96,7 @@ function TabPanel(props: TabPanelProps) {
       aria-labelledby={`draft-tab-${index}`}
       {...other}
     >
-      {value === index && <Box sx={{ p: 3 }}>{children}</Box>}
+      {value === index && <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>{children}</Box>}
     </div>
   );
 }
@@ -154,8 +156,9 @@ function SortableSubtopic({
       style={style}
       elevation={0}
       sx={{
-        mb: 1,
-        p: 2,
+        mb: 0.5,
+        py: 0.5,
+        px: 1.25,
         border: '1px solid #e2e8f0',
         borderRadius: 1,
         background: 'white',
@@ -164,21 +167,21 @@ function SortableSubtopic({
         },
       }}
     >
-      <Box display="flex" alignItems="center" gap={2}>
+      <Box display="flex" alignItems="center" gap={1}>
         <Tooltip title="Drag to reorder subtopic">
           <DragIndicator
-            sx={{ color: '#cbd5e0', cursor: 'grab', fontSize: 18 }}
+            sx={{ color: '#cbd5e0', cursor: 'grab', fontSize: 14 }}
             {...attributes}
             {...listeners}
           />
         </Tooltip>
 
         <Typography
-          variant="body2"
           sx={{
             color: '#667eea',
             fontWeight: 600,
-            minWidth: '40px',
+            fontSize: '0.7rem',
+            minWidth: '32px',
           }}
         >
           {topicIndex + 1}.{subIndex + 1}
@@ -194,28 +197,29 @@ function SortableSubtopic({
             autoFocus
             variant="outlined"
             size="small"
+            sx={{ '& .MuiInputBase-input': { fontSize: '0.75rem', py: 0.5 } }}
           />
         ) : (
           <Typography
-            variant="body1"
             sx={{
               flexGrow: 1,
               color: '#4a5568',
               fontWeight: 500,
+              fontSize: '0.75rem',
             }}
           >
             {subtopic.topic}
           </Typography>
         )}
 
-        <Box display="flex" gap={0.5}>
+        <Box display="flex" gap={0.25}>
           <Tooltip title="Edit subtopic">
             <IconButton
               size="small"
               onClick={() => onEditTopic(subtopic.subtopic_id, subtopic.topic, true)}
-              sx={{ color: '#10b981' }}
+              sx={{ color: '#10b981', p: 0.25 }}
             >
-              <Edit sx={{ fontSize: 18 }} />
+              <Edit sx={{ fontSize: 14 }} />
             </IconButton>
           </Tooltip>
 
@@ -223,9 +227,9 @@ function SortableSubtopic({
             <IconButton
               size="small"
               onClick={() => onDeleteTopic(subtopic.subtopic_id, true)}
-              sx={{ color: '#ef4444' }}
+              sx={{ color: '#ef4444', p: 0.25 }}
             >
-              <Delete sx={{ fontSize: 18 }} />
+              <Delete sx={{ fontSize: 14 }} />
             </IconButton>
           </Tooltip>
         </Box>
@@ -294,9 +298,9 @@ function SortableTopic({
       style={style}
       elevation={0}
       sx={{
-        mb: 2,
+        mb: 1,
         border: '1px solid #e2e8f0',
-        borderRadius: 2,
+        borderRadius: 1.5,
         overflow: 'hidden',
         transition: 'all 0.2s ease',
         '&:hover': {
@@ -308,15 +312,16 @@ function SortableTopic({
       {/* Main Topic */}
       <Box
         sx={{
-          p: 3,
+          py: 0.75,
+          px: 1.5,
           background: '#fafbfc',
           borderBottom: '1px solid #e2e8f0',
         }}
       >
-        <Box display="flex" alignItems="center" gap={2}>
+        <Box display="flex" alignItems="center" gap={1}>
           <Tooltip title="Drag to reorder">
             <DragIndicator
-              sx={{ color: '#94a3b8', cursor: 'grab' }}
+              sx={{ color: '#94a3b8', cursor: 'grab', fontSize: 16 }}
               {...attributes}
               {...listeners}
             />
@@ -324,16 +329,17 @@ function SortableTopic({
 
           <Box
             sx={{
-              width: 32,
-              height: 32,
-              borderRadius: 2,
+              width: 20,
+              height: 20,
+              minWidth: 20,
+              borderRadius: 1,
               background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               color: 'white',
               fontWeight: 600,
-              fontSize: '0.9rem',
+              fontSize: '0.65rem',
             }}
           >
             {index + 1}
@@ -349,29 +355,30 @@ function SortableTopic({
               autoFocus
               variant="outlined"
               size="small"
+              sx={{ '& .MuiInputBase-input': { fontSize: '0.75rem', py: 0.5 } }}
             />
           ) : (
             <Typography
-              variant="h6"
               sx={{
                 flexGrow: 1,
                 color: '#2d3748',
                 fontWeight: 600,
+                fontSize: '0.8rem',
               }}
             >
               {topic.topic}
             </Typography>
           )}
 
-          <Box display="flex" gap={1}>
+          <Box display="flex" gap={0.25}>
             {topic.subtopics && topic.subtopics.length > 0 && (
               <Tooltip title={expandedTopics.has(topic.topic_id) ? 'Collapse' : 'Expand'}>
                 <IconButton
                   size="small"
                   onClick={() => onToggleExpansion(topic.topic_id)}
-                  sx={{ color: '#667eea' }}
+                  sx={{ color: '#667eea', p: 0.25 }}
                 >
-                  {expandedTopics.has(topic.topic_id) ? <ExpandLess /> : <ExpandMore />}
+                  {expandedTopics.has(topic.topic_id) ? <ExpandLess sx={{ fontSize: 16 }} /> : <ExpandMore sx={{ fontSize: 16 }} />}
                 </IconButton>
               </Tooltip>
             )}
@@ -380,9 +387,9 @@ function SortableTopic({
               <IconButton
                 size="small"
                 onClick={() => onEditTopic(topic.topic_id, topic.topic, false)}
-                sx={{ color: '#10b981' }}
+                sx={{ color: '#10b981', p: 0.25 }}
               >
-                <Edit />
+                <Edit sx={{ fontSize: 15 }} />
               </IconButton>
             </Tooltip>
 
@@ -395,9 +402,9 @@ function SortableTopic({
                   }
                   setShowAddSubtopic(true);
                 }}
-                sx={{ color: '#667eea' }}
+                sx={{ color: '#667eea', p: 0.25 }}
               >
-                <Add />
+                <Add sx={{ fontSize: 15 }} />
               </IconButton>
             </Tooltip>
 
@@ -405,9 +412,9 @@ function SortableTopic({
               <IconButton
                 size="small"
                 onClick={() => onDeleteTopic(topic.topic_id, false)}
-                sx={{ color: '#ef4444' }}
+                sx={{ color: '#ef4444', p: 0.25 }}
               >
-                <Delete />
+                <Delete sx={{ fontSize: 15 }} />
               </IconButton>
             </Tooltip>
           </Box>
@@ -416,7 +423,7 @@ function SortableTopic({
 
       {/* Subtopics with Drag and Drop */}
       {expandedTopics.has(topic.topic_id) && topic.subtopics.length > 0 && (
-        <Box sx={{ p: 2, pl: 4 }}>
+        <Box sx={{ p: 1, pl: 2.5 }}>
           <DndContext
             sensors={subtopicSensors}
             collisionDetection={closestCenter}
@@ -446,8 +453,8 @@ function SortableTopic({
 
       {/* Add Subtopic Form */}
       {expandedTopics.has(topic.topic_id) && showAddSubtopic && (
-        <Box sx={{ p: 2, pl: 4, borderTop: '1px solid #e2e8f0', background: '#f8fafc' }}>
-          <Box display="flex" gap={2} alignItems="center">
+        <Box sx={{ p: 1, pl: 2.5, borderTop: '1px solid #e2e8f0', background: '#f8fafc' }}>
+          <Box display="flex" gap={1} alignItems="center">
             <TextField
               fullWidth
               size="small"
@@ -1080,32 +1087,36 @@ function ContentGenerationPanel({
   }, [generatedContent, generatingTopics, currentItemId, scrollToBottom]);
 
   return (
-    <Box sx={{ height: 'calc(100vh - 300px)', display: 'flex', gap: 2 }}>
+    <Box sx={{ height: { xs: 'auto', lg: 'calc(100vh - 300px)' }, display: 'flex', flexDirection: { xs: 'column', lg: 'row' }, gap: 2 }}>
       {/* Left Sidebar - Topic Selection */}
       <Paper
         elevation={0}
         sx={{
-          width: 300,
+          width: { xs: '100%', lg: 220 },
+          minWidth: { lg: 220 },
+          flexShrink: 0,
           border: '1px solid #e2e8f0',
           borderRadius: 3,
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
+          maxHeight: { xs: 300, lg: 'none' },
         }}
       >
         {/* Header */}
         <Box
           sx={{
-            p: 3,
+            p: 1.5,
+            px: 2,
             background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
             color: 'white',
           }}
         >
-          <Typography variant="h6" fontWeight={600}>
+          <Typography variant="body1" fontWeight={600}>
             Content Topics
           </Typography>
-          <Typography variant="body2" sx={{ opacity: 0.9, mt: 0.5 }}>
-            Select a section to generate content
+          <Typography variant="caption" sx={{ opacity: 0.9 }}>
+            Select a section to generate
           </Typography>
         </Box>
 
@@ -1113,7 +1124,7 @@ function ContentGenerationPanel({
         <Box sx={{
           flex: 1,
           overflow: 'auto',
-          p: 2,
+          p: 1,
           // Custom scrollbar styling
           '&::-webkit-scrollbar': {
             width: '6px',
@@ -1134,7 +1145,7 @@ function ContentGenerationPanel({
           scrollbarColor: 'rgba(255, 255, 255, 0.3) rgba(255, 255, 255, 0.1)',
         }}>
           {currentToc.map((topic, topicIndex) => (
-            <Box key={topic.topic_id} sx={{ mb: 2 }}>
+            <Box key={topic.topic_id} sx={{ mb: 1 }}>
               {/* Main Topic */}
               <Paper
                 elevation={0}
@@ -1158,11 +1169,12 @@ function ContentGenerationPanel({
                   });
                 }}
                 sx={{
-                  p: 2,
+                  p: 1,
+                  px: 1.5,
                   cursor: 'pointer',
                   border: topic.content ? '2px solid #10b981' : '1px solid #e2e8f0',
-                  borderRadius: 2,
-                  mb: 1,
+                  borderRadius: 1.5,
+                  mb: 0.5,
                   background: selectedItem?.id === topic.topic_id
                     ? 'linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%)'
                     : topic.content
@@ -1183,33 +1195,35 @@ function ContentGenerationPanel({
                   },
                 }}
               >
-                <Box display="flex" alignItems="center" gap={2}>
-                  <Box flex={1}>
-                    <Box display="flex" alignItems="center" gap={1}>
-                      <Typography
-                        variant="body1"
-                        sx={{
-                          fontWeight: 600,
-                          color: selectedItem?.id === topic.topic_id
-                            ? '#667eea'
-                            : topic.content
-                              ? '#059669'
-                              : '#2d3748',
-                          fontSize: '0.9rem',
-                          lineHeight: 1.4,
-                        }}
-                      >
-                        {topic.topic}
-                      </Typography>
-                    </Box>
+                <Box display="flex" alignItems="center" gap={1}>
+                  <Box flex={1} minWidth={0}>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        fontWeight: 600,
+                        color: selectedItem?.id === topic.topic_id
+                          ? '#667eea'
+                          : topic.content
+                            ? '#059669'
+                            : '#2d3748',
+                        fontSize: '0.8rem',
+                        lineHeight: 1.3,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {topic.topic}
+                    </Typography>
                     <Typography
                       variant="caption"
                       sx={{
                         color: topic.content ? '#10b981' : '#718096',
                         fontWeight: topic.content ? 600 : 400,
+                        fontSize: '0.65rem',
                       }}
                     >
-                      {topic.content ? '✓ Content completed' : 'No content'}
+                      {topic.content ? '✓ Done' : 'No content'}
                     </Typography>
                   </Box>
                 </Box>
@@ -1241,12 +1255,13 @@ function ContentGenerationPanel({
                     });
                   }}
                   sx={{
-                    p: 2,
-                    ml: 3,
+                    p: 0.75,
+                    px: 1.5,
+                    ml: 2,
                     cursor: 'pointer',
                     border: subtopic.content ? '2px solid #10b981' : '1px solid #e2e8f0',
-                    borderRadius: 2,
-                    mb: 1,
+                    borderRadius: 1.5,
+                    mb: 0.5,
                     background: selectedItem?.id === subtopic.subtopic_id
                       ? 'linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%)'
                       : subtopic.content
@@ -1267,24 +1282,23 @@ function ContentGenerationPanel({
                     },
                   }}
                 >
-                  <Box display="flex" alignItems="center" gap={2}>
-                    <Box display="flex" alignItems="center" gap={1}>
-                      <Typography
-                        variant="caption"
-                        sx={{
-                          color: selectedItem?.id === subtopic.subtopic_id
-                            ? '#667eea'
-                            : subtopic.content
-                              ? '#10b981'
-                              : '#718096',
-                          fontWeight: 600,
-                          minWidth: '32px',
-                        }}
-                      >
-                        {topicIndex + 1}.{subIndex + 1}
-                      </Typography>
-                    </Box>
-                    <Box flex={1}>
+                  <Box display="flex" alignItems="center" gap={1}>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: selectedItem?.id === subtopic.subtopic_id
+                          ? '#667eea'
+                          : subtopic.content
+                            ? '#10b981'
+                            : '#718096',
+                        fontWeight: 600,
+                        fontSize: '0.65rem',
+                        minWidth: '28px',
+                      }}
+                    >
+                      {topicIndex + 1}.{subIndex + 1}
+                    </Typography>
+                    <Box flex={1} minWidth={0}>
                       <Typography
                         variant="body2"
                         sx={{
@@ -1294,20 +1308,14 @@ function ContentGenerationPanel({
                             : subtopic.content
                               ? '#059669'
                               : '#4a5568',
-                          fontSize: '0.85rem',
-                          lineHeight: 1.4,
+                          fontSize: '0.75rem',
+                          lineHeight: 1.3,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
                         }}
                       >
                         {subtopic.topic}
-                      </Typography>
-                      <Typography
-                        variant="caption"
-                        sx={{
-                          color: subtopic.content ? '#10b981' : '#718096',
-                          fontWeight: subtopic.content ? 600 : 400,
-                        }}
-                      >
-                        {subtopic.content ? '✓ Content completed' : 'No content'}
                       </Typography>
                     </Box>
                   </Box>
@@ -1322,29 +1330,32 @@ function ContentGenerationPanel({
       <Paper
         elevation={0}
         sx={{
-          flex: 1,
+          flex: '1 1 auto',
+          minWidth: 0,
           border: '1px solid #e2e8f0',
           borderRadius: 3,
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
+          minHeight: { xs: 400, lg: 'auto' },
         }}
       >
         {/* Header */}
         {selectedItem && (
           <Box
             sx={{
-              p: 3,
+              py: 1,
+              px: 2,
               background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
               borderBottom: '1px solid #e2e8f0',
             }}
           >
             <Box display="flex" justifyContent="space-between" alignItems="center">
-              <Box flex={1}>
-                <Typography variant="h6" sx={{ color: 'white', fontWeight: 600 }}>
+              <Box flex={1} minWidth={0}>
+                <Typography variant="body2" sx={{ color: 'white', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {selectedItem.title}
                 </Typography>
-                <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.9)', mt: 0.5 }}>
+                <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.9)', fontSize: '0.65rem' }}>
                   {selectedItem.type === 'topic' ? 'Main Topic' : 'Subtopic'} • Content Generation
                 </Typography>
               </Box>
@@ -1415,31 +1426,30 @@ function ContentGenerationPanel({
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                justifyContent: 'center',
-                height: '100%',
+                justifyContent: 'flex-start',
+                pt: 1,
                 color: '#718096',
               }}
             >
-              <Box
+              {/* <Box
                 sx={{
-                  width: 80,
-                  height: 80,
+                  width: 20,
+                  height: 20,
                   borderRadius: '50%',
                   background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  mb: 3,
+                  mb: 1,
                 }}
               >
-                <Typography variant="h4" sx={{ color: 'white' }}>✨</Typography>
-              </Box>
-              <Typography variant="h6" sx={{ fontWeight: 600, mb: 1, color: '#2d3748' }}>
+                <Typography variant="body1" sx={{ color: 'white' }}>✨</Typography>
+              </Box> */}
+              <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5, color: '#2d3748' }}>
                 Start Content Generation
               </Typography>
-              <Typography variant="body2" sx={{ textAlign: 'center', maxWidth: 400 }}>
-                Ask questions, request content, or provide context for "{selectedItem?.title}".
-                I'll help you generate professional policy content.
+              <Typography variant="caption" sx={{ textAlign: 'center', maxWidth: 300 }}>
+                Ask questions or request content for "{selectedItem?.title}".
               </Typography>
             </Box>
           )}
@@ -1565,25 +1575,28 @@ function ContentGenerationPanel({
         {/* Input Area */}
         <Box
           sx={{
-            p: 3,
+            p: 1,
+            px: 1.5,
             borderTop: '1px solid #e2e8f0',
             background: '#fafbfc',
           }}
         >
-          <Box display="flex" gap={2}>
+          <Box display="flex" gap={1} alignItems="center">
             <TextField
               fullWidth
-              placeholder="Ask me to generate content, explain concepts, or provide guidance..."
+              placeholder="Ask me to generate content..."
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
               multiline
-              maxRows={4}
+              maxRows={2}
+              size="small"
               variant="outlined"
               sx={{
                 '& .MuiOutlinedInput-root': {
-                  borderRadius: 3,
+                  borderRadius: 2,
                   background: 'white',
+                  fontSize: '0.85rem',
                   '&.Mui-focused fieldset': {
                     borderColor: '#667eea',
                   },
@@ -1595,9 +1608,9 @@ function ContentGenerationPanel({
               onClick={handleSendMessage}
               disabled={!chatInput.trim() || generatingTopics.has(currentItemId)}
               sx={{
-                minWidth: 56,
-                height: 56,
-                borderRadius: 3,
+                minWidth: 40,
+                height: 40,
+                borderRadius: 2,
                 background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                 '&:hover': {
                   background: 'linear-gradient(135deg, #5569d8 0%, #6a4291 100%)',
@@ -1614,36 +1627,29 @@ function ContentGenerationPanel({
       <Paper
         elevation={0}
         sx={{
-          width: 400,
+          width: { xs: '100%', lg: 300 },
+          minWidth: { lg: 300 },
+          flexShrink: 0,
           border: '1px solid #e2e8f0',
           borderRadius: 3,
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
+          minHeight: { xs: 300, lg: 'auto' },
         }}
       >
         {/* Header */}
         <Box
           sx={{
-            p: 3,
+            py: 0.5,
+            px: 1.5,
             background: 'linear-gradient(135deg, #10b981 0%, #065f46 100%)',
             color: 'white',
           }}
         >
-          <Box display="flex" justifyContent="space-between" alignItems="center">
-            <Box>
-              <Typography variant="h6" fontWeight={600}>
-                {rightPanelView === 'generated' ? 'Generated Content' : 'Current Content'}
-              </Typography>
-              <Typography variant="body2" sx={{ opacity: 0.9, mt: 0.5 }}>
-                {rightPanelView === 'generated'
-                  ? 'Preview and edit your content'
-                  : 'View and edit saved content'
-                }
-              </Typography>
-            </Box>
-
-          </Box>
+          <Typography variant="caption" fontWeight={600} sx={{ fontSize: '0.75rem' }}>
+            {rightPanelView === 'generated' ? 'Generated Content' : 'Current Content'} — Preview and edit
+          </Typography>
         </Box>
 
         {/* Toggle Buttons */}
@@ -1652,14 +1658,15 @@ function ContentGenerationPanel({
             onClick={() => setRightPanelView('generated')}
             sx={{
               flex: 1,
-              py: 1.5,
-              fontSize: '0.875rem',
+              py: 0.5,
+              fontSize: '0.75rem',
               fontWeight: 600,
               textTransform: 'none',
               borderRadius: 0,
-              borderBottom: rightPanelView === 'generated' ? '3px solid #10b981' : '3px solid transparent',
+              borderBottom: rightPanelView === 'generated' ? '2px solid #10b981' : '2px solid transparent',
               color: rightPanelView === 'generated' ? '#10b981' : '#718096',
               background: rightPanelView === 'generated' ? 'rgba(16, 185, 129, 0.05)' : 'transparent',
+              minHeight: 0,
               '&:hover': {
                 background: rightPanelView === 'generated'
                   ? 'rgba(16, 185, 129, 0.1)'
@@ -1667,21 +1674,22 @@ function ContentGenerationPanel({
               },
             }}
           >
-            Generated Content
+            Generated
           </Button>
           <Button
             onClick={() => setRightPanelView('current')}
             disabled={!currentContent}
             sx={{
               flex: 1,
-              py: 1.5,
-              fontSize: '0.875rem',
+              py: 0.5,
+              fontSize: '0.75rem',
               fontWeight: 600,
               textTransform: 'none',
               borderRadius: 0,
-              borderBottom: rightPanelView === 'current' ? '3px solid #10b981' : '3px solid transparent',
+              borderBottom: rightPanelView === 'current' ? '2px solid #10b981' : '2px solid transparent',
               color: rightPanelView === 'current' ? '#10b981' : '#718096',
               background: rightPanelView === 'current' ? 'rgba(16, 185, 129, 0.05)' : 'transparent',
+              minHeight: 0,
               '&:hover': {
                 background: rightPanelView === 'current'
                   ? 'rgba(16, 185, 129, 0.1)'
@@ -1690,18 +1698,18 @@ function ContentGenerationPanel({
               '&:disabled': {
                 color: 'rgba(113, 128, 150, 0.5)',
                 background: 'transparent',
-                borderBottom: '3px solid transparent',
+                borderBottom: '2px solid transparent',
               },
             }}
           >
-            Current Content
+            Current
           </Button>
         </Box>
 
         {/* Content Area */}
         <Box sx={{
           flex: 1,
-          p: 3,
+          p: 1,
           overflow: 'auto',
           // Custom scrollbar styling - green theme
           '&::-webkit-scrollbar': {
@@ -1725,11 +1733,9 @@ function ContentGenerationPanel({
           {rightPanelView === 'generated' ? (
             // Generated Content View
             <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-              <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography variant="body2" sx={{ color: '#718096' }}>
-                  Content is fully editable • {generatedContent && typeof generatedContent === 'string' ? generatedContent.split(/\s+/).filter(word => word.length > 0).length : 0} words
-                </Typography>
-              </Box>
+              <Typography variant="caption" sx={{ color: '#718096', mb: 0.5, fontSize: '0.65rem' }}>
+                Editable • {generatedContent && typeof generatedContent === 'string' ? generatedContent.split(/\s+/).filter(word => word.length > 0).length : 0} words
+              </Typography>
               <TextField
                 fullWidth
                 multiline
@@ -1737,13 +1743,14 @@ function ContentGenerationPanel({
                 onChange={(e) => updateGeneratedContentWithAutoSave(currentItemId, e.target.value)}
                 placeholder="Generated content will appear here..."
                 variant="outlined"
+                size="small"
                 sx={{
                   flex: 1,
                   '& .MuiOutlinedInput-root': {
                     height: '100%',
-                    borderRadius: 2,
-                    fontSize: '0.9rem',
-                    lineHeight: 1.6,
+                    borderRadius: 1,
+                    fontSize: '0.8rem',
+                    lineHeight: 1.5,
                     alignItems: 'flex-start',
                     background: 'white',
                     '&.Mui-focused fieldset': {
@@ -1752,7 +1759,7 @@ function ContentGenerationPanel({
                   },
                   '& .MuiInputBase-input': {
                     fontFamily: 'inherit',
-                    padding: '16px !important',
+                    padding: '8px !important',
                   },
                 }}
               />
@@ -1760,14 +1767,12 @@ function ContentGenerationPanel({
           ) : (
             // Current Content View
             <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-              <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography variant="body2" sx={{ color: '#718096' }}>
-                  {selectedItem?.content && typeof selectedItem.content === 'string'
-                    ? `Saved content • ${selectedItem.content.split(/\s+/).filter(word => word.length > 0).length} words`
-                    : 'No saved content yet'
-                  }
-                </Typography>
-              </Box>
+              <Typography variant="caption" sx={{ color: '#718096', mb: 0.5, fontSize: '0.65rem' }}>
+                {selectedItem?.content && typeof selectedItem.content === 'string'
+                  ? `Saved • ${selectedItem.content.split(/\s+/).filter(word => word.length > 0).length} words`
+                  : 'No saved content yet'
+                }
+              </Typography>
               <TextField
                 fullWidth
                 multiline
@@ -1778,13 +1783,14 @@ function ContentGenerationPanel({
                   : "Enter your content here..."
                 }
                 variant="outlined"
+                size="small"
                 sx={{
                   flex: 1,
                   '& .MuiOutlinedInput-root': {
                     height: '100%',
-                    borderRadius: 2,
-                    fontSize: '0.9rem',
-                    lineHeight: 1.6,
+                    borderRadius: 1,
+                    fontSize: '0.8rem',
+                    lineHeight: 1.5,
                     alignItems: 'flex-start',
                     background: 'white',
                     '&.Mui-focused fieldset': {
@@ -1793,7 +1799,7 @@ function ContentGenerationPanel({
                   },
                   '& .MuiInputBase-input': {
                     fontFamily: 'inherit',
-                    padding: '16px !important',
+                    padding: '8px !important',
                   },
                 }}
               />
@@ -1804,26 +1810,27 @@ function ContentGenerationPanel({
         {/* Actions */}
         <Box
           sx={{
-            p: 3,
+            px: 1,
+            py: 0.75,
             borderTop: '1px solid #e2e8f0',
             background: '#fafbfc',
           }}
         >
           {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
+            <Alert severity="error" sx={{ mb: 0.5, py: 0, '& .MuiAlert-message': { fontSize: '0.7rem' } }}>
               {error}
             </Alert>
           )}
           {saveSuccess && (
-            <Alert severity="success" sx={{ mb: 2 }}>
+            <Alert severity="success" sx={{ mb: 0.5, py: 0, '& .MuiAlert-message': { fontSize: '0.7rem' } }}>
               {(() => {
                 const nextItem = findNextItem();
                 if (isNavigating && nextItem) {
-                  return `Content saved! Moving to "${nextItem.title}"... 🚀`;
+                  return `Saved! Moving to "${nextItem.title}"...`;
                 } else if (!nextItem) {
-                  return `Content saved! All sections completed! 🎉`;
+                  return `Saved! All sections done!`;
                 } else {
-                  return `Content saved successfully!`;
+                  return `Saved!`;
                 }
               })()}
             </Alert>
@@ -1831,30 +1838,26 @@ function ContentGenerationPanel({
 
           {/* Save Status Indicators */}
           <Box sx={{
-            mb: 2,
+            mb: 0.5,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            px: 1,
-            py: 1,
-            backgroundColor: 'rgba(0, 0, 0, 0.02)',
-            borderRadius: 1,
-            border: '1px solid rgba(0, 0, 0, 0.08)'
+            px: 0.5,
           }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
               {isAutoSaving && (
                 <Box sx={{
                   display: 'flex',
                   alignItems: 'center',
                   gap: 0.5,
                   color: '#10b981',
-                  fontSize: '0.875rem',
+                  fontSize: '0.65rem',
                   fontWeight: 500
                 }}>
                   <Box
                     sx={{
-                      width: 12,
-                      height: 12,
+                      width: 8,
+                      height: 8,
                       borderRadius: '50%',
                       border: '2px solid #10b981',
                       borderTop: '2px solid transparent',
@@ -1865,7 +1868,7 @@ function ContentGenerationPanel({
                       }
                     }}
                   />
-                  Auto-saving...
+                  Saving...
                 </Box>
               )}
               {!isAutoSaving && hasUnsavedContentFlag && (
@@ -1874,16 +1877,16 @@ function ContentGenerationPanel({
                   alignItems: 'center',
                   gap: 0.5,
                   color: '#f59e0b',
-                  fontSize: '0.875rem',
+                  fontSize: '0.65rem',
                   fontWeight: 500
                 }}>
                   <Box sx={{
-                    width: 8,
-                    height: 8,
+                    width: 6,
+                    height: 6,
                     borderRadius: '50%',
                     backgroundColor: '#f59e0b'
                   }} />
-                  Unsaved changes
+                  Unsaved
                 </Box>
               )}
               {!isAutoSaving && !hasUnsavedContentFlag && lastSavedAt[currentItemId] && (
@@ -1892,27 +1895,26 @@ function ContentGenerationPanel({
                   alignItems: 'center',
                   gap: 0.5,
                   color: '#059669',
-                  fontSize: '0.875rem',
+                  fontSize: '0.65rem',
                   fontWeight: 500
                 }}>
                   <Box sx={{
-                    width: 8,
-                    height: 8,
+                    width: 6,
+                    height: 6,
                     borderRadius: '50%',
                     backgroundColor: '#059669'
                   }} />
-                  All changes saved
+                  Saved
                 </Box>
               )}
             </Box>
 
             {lastSavedAt[currentItemId] && (
               <Box sx={{
-                fontSize: '0.75rem',
+                fontSize: '0.6rem',
                 color: '#64748b',
-                fontStyle: 'italic'
               }}>
-                Last saved: {new Date(lastSavedAt[currentItemId]).toLocaleTimeString()}
+                {new Date(lastSavedAt[currentItemId]).toLocaleTimeString()}
               </Box>
             )}
           </Box>
@@ -1920,10 +1922,14 @@ function ContentGenerationPanel({
           {rightPanelView === 'generated' ? (
             <Button
               fullWidth
+              size="small"
               variant="contained"
               disabled={!generatedContent.trim() || (!hasUnsavedContent[currentItemId] && generatedContent === (selectedItem?.content || ''))}
               onClick={handleSaveContent}
               sx={{
+                fontSize: '0.75rem',
+                py: 0.5,
+                textTransform: 'none',
                 background: saveSuccess
                   ? 'linear-gradient(135deg, #059669 0%, #064e3b 100%)'
                   : 'linear-gradient(135deg, #10b981 0%, #065f46 100%)',
@@ -1936,15 +1942,18 @@ function ContentGenerationPanel({
                 },
               }}
             >
-              {saveSuccess ? 'Content Saved ✓' : 'Save Content'}
+              {saveSuccess ? 'Saved ✓' : 'Save Content'}
             </Button>
           ) : (
             <Button
               fullWidth
+              size="small"
               variant="contained"
               onClick={handleSaveEditedContent}
               disabled={!editedContent.trim() || editedContent === (selectedItem?.content || '')}
               sx={{
+                fontSize: '0.75rem',
+                py: 0.5,
                 textTransform: 'none',
                 background: 'linear-gradient(135deg, #10b981 0%, #065f46 100%)',
                 '&:hover': {
@@ -1956,7 +1965,7 @@ function ContentGenerationPanel({
                 },
               }}
             >
-              {!selectedItem?.content ? 'No Content to Save' : 'Save Changes'}
+              {!selectedItem?.content ? 'No Content' : 'Save Changes'}
             </Button>
           )}
         </Box>
@@ -1971,6 +1980,9 @@ interface ExportReviewPanelProps {
 }
 
 function ExportReviewPanel({ draft, currentToc }: ExportReviewPanelProps) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isCompact = useMediaQuery(theme.breakpoints.down('xl'));
   const [selectedExportFormat, setSelectedExportFormat] = useState<'word' | 'pdf'>('word');
   const [isExporting, setIsExporting] = useState(false);
   const [exportSuccess, setExportSuccess] = useState(false);
@@ -2051,23 +2063,23 @@ function ExportReviewPanel({ draft, currentToc }: ExportReviewPanelProps) {
   return (
     <Box sx={{ maxWidth: '1400px', mx: 'auto' }}>
       {/* Header Section */}
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" sx={{ color: '#1a202c', fontWeight: 700, mb: 2 }}>
+      <Box sx={{ mb: isCompact ? 2 : 4 }}>
+        <Typography variant={isCompact ? 'body1' : 'h4'} sx={{ color: '#1a202c', fontWeight: 700, mb: isCompact ? 0.5 : 2 }}>
           Export & Review
         </Typography>
-        <Typography variant="body1" sx={{ color: '#64748b', mb: 3 }}>
+        <Typography variant={isCompact ? 'caption' : 'body1'} sx={{ color: '#64748b', mb: isCompact ? 1.5 : 3 }}>
           Review your complete policy document and export it in your preferred format.
         </Typography>
       </Box>
 
       {/* Progress Overview Dashboard */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr 1fr 1fr' }, gap: 3, mb: 4 }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr 1fr 1fr' }, gap: isCompact ? 1.5 : 3, mb: isCompact ? 2 : 4 }}>
         {/* Completion Status */}
         <Paper
           elevation={0}
           sx={{
-            p: 3,
-            borderRadius: 3,
+            p: isCompact ? 1.5 : 3,
+            borderRadius: isCompact ? 2 : 3,
             background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
             color: 'white',
             position: 'relative',
@@ -2075,16 +2087,16 @@ function ExportReviewPanel({ draft, currentToc }: ExportReviewPanelProps) {
           }}
         >
           <Box sx={{ position: 'relative', zIndex: 2 }}>
-            <Box display="flex" alignItems="center" gap={2} mb={2}>
-              <Assessment sx={{ fontSize: 32 }} />
-              <Typography variant="h6" fontWeight={600}>
+            <Box display="flex" alignItems="center" gap={isCompact ? 1 : 2} mb={isCompact ? 1 : 2}>
+              <Assessment sx={{ fontSize: isCompact ? 20 : 32 }} />
+              <Typography sx={{ fontSize: isCompact ? '0.75rem' : undefined, fontWeight: 600 }} variant={isCompact ? undefined : 'h6'}>
                 Completion
               </Typography>
             </Box>
-            <Typography variant="h3" fontWeight={700} sx={{ mb: 1 }}>
+            <Typography variant={isCompact ? 'h5' : 'h3'} fontWeight={700} sx={{ mb: 0.5 }}>
               {completionPercentage}%
             </Typography>
-            <Typography variant="body2" sx={{ opacity: 0.9 }}>
+            <Typography variant={isCompact ? 'caption' : 'body2'} sx={{ opacity: 0.9 }}>
               {documentStats.completedSections} of {documentStats.totalSections} sections
             </Typography>
           </Box>
@@ -2113,19 +2125,19 @@ function ExportReviewPanel({ draft, currentToc }: ExportReviewPanelProps) {
         <Paper
           elevation={0}
           sx={{
-            p: 3,
-            borderRadius: 3,
+            p: isCompact ? 1.5 : 3,
+            borderRadius: isCompact ? 2 : 3,
             border: '1px solid #e2e8f0',
             background: '#fafbfc',
           }}
         >
-          <Box display="flex" alignItems="center" gap={2} mb={2}>
-            <Description sx={{ fontSize: 32, color: '#10b981' }} />
-            <Typography variant="h6" fontWeight={600} sx={{ color: '#2d3748' }}>
+          <Box display="flex" alignItems="center" gap={isCompact ? 1 : 2} mb={isCompact ? 1 : 2}>
+            <Description sx={{ fontSize: isCompact ? 20 : 32, color: '#10b981' }} />
+            <Typography sx={{ fontSize: isCompact ? '0.75rem' : undefined, fontWeight: 600, color: '#2d3748' }} variant={isCompact ? undefined : 'h6'}>
               Word Count
             </Typography>
           </Box>
-          <Typography variant="h3" fontWeight={700} sx={{ color: '#1a202c', mb: 1 }}>
+          <Typography variant={isCompact ? 'h5' : 'h3'} fontWeight={700} sx={{ color: '#1a202c', mb: 0.5 }}>
             {documentStats.totalWords.toLocaleString()}
           </Typography>
         </Paper>
@@ -2134,29 +2146,30 @@ function ExportReviewPanel({ draft, currentToc }: ExportReviewPanelProps) {
         <Paper
           elevation={0}
           sx={{
-            p: 3,
-            borderRadius: 3,
+            p: isCompact ? 1.5 : 3,
+            borderRadius: isCompact ? 2 : 3,
             border: '1px solid #e2e8f0',
             background: '#fafbfc',
           }}
         >
-          <Box display="flex" alignItems="center" gap={2} mb={2}>
-            <Article sx={{ fontSize: 32, color: '#f59e0b' }} />
-            <Typography variant="h6" fontWeight={600} sx={{ color: '#2d3748' }}>
+          <Box display="flex" alignItems="center" gap={isCompact ? 1 : 2} mb={isCompact ? 1 : 2}>
+            <Article sx={{ fontSize: isCompact ? 20 : 32, color: '#f59e0b' }} />
+            <Typography sx={{ fontSize: isCompact ? '0.75rem' : undefined, fontWeight: 600, color: '#2d3748' }} variant={isCompact ? undefined : 'h6'}>
               Status
             </Typography>
           </Box>
           <Typography
-            variant="h6"
-            fontWeight={600}
             sx={{
+              fontSize: isCompact ? '0.85rem' : undefined,
+              fontWeight: 600,
               color: completionPercentage === 100 ? '#10b981' : completionPercentage > 50 ? '#f59e0b' : '#ef4444',
-              mb: 1
+              mb: 0.5
             }}
+            variant={isCompact ? undefined : 'h6'}
           >
             {completionPercentage === 100 ? 'Complete' : completionPercentage > 50 ? 'In Progress' : 'Draft'}
           </Typography>
-          <Typography variant="body2" sx={{ color: '#718096' }}>
+          <Typography variant={isCompact ? 'caption' : 'body2'} sx={{ color: '#718096' }}>
             {completionPercentage === 100
               ? 'Ready for export'
               : `${documentStats.totalSections - documentStats.completedSections} sections remaining`
@@ -2168,68 +2181,68 @@ function ExportReviewPanel({ draft, currentToc }: ExportReviewPanelProps) {
         <Paper
           elevation={0}
           sx={{
-            p: 3,
-            borderRadius: 3,
+            p: isCompact ? 1.5 : 3,
+            borderRadius: isCompact ? 2 : 3,
             border: '1px solid #e2e8f0',
             background: '#fafbfc',
           }}
         >
-          <Box display="flex" alignItems="center" gap={2} mb={2}>
-            <CalendarToday sx={{ fontSize: 32, color: '#667eea' }} />
-            <Typography variant="h6" fontWeight={600} sx={{ color: '#2d3748' }}>
+          <Box display="flex" alignItems="center" gap={isCompact ? 1 : 2} mb={isCompact ? 1 : 2}>
+            <CalendarToday sx={{ fontSize: isCompact ? 20 : 32, color: '#667eea' }} />
+            <Typography sx={{ fontSize: isCompact ? '0.75rem' : undefined, fontWeight: 600, color: '#2d3748' }} variant={isCompact ? undefined : 'h6'}>
               Last Updated
             </Typography>
           </Box>
-          <Typography variant="body1" fontWeight={600} sx={{ color: '#1a202c', mb: 1 }}>
+          <Typography variant={isCompact ? 'body2' : 'body1'} fontWeight={600} sx={{ color: '#1a202c', mb: 0.5 }}>
             {new Date(draft.metadata.modified_at).toLocaleDateString()}
           </Typography>
-          <Typography variant="body2" sx={{ color: '#718096' }}>
+          <Typography variant={isCompact ? 'caption' : 'body2'} sx={{ color: '#718096' }}>
             {new Date(draft.metadata.modified_at).toLocaleTimeString()}
           </Typography>
         </Paper>
       </Box>
 
       {/* Main Content Area */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '2fr 1fr' }, gap: 4 }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '2fr 1fr' }, gap: isCompact ? 2 : 4 }}>
         {/* Left Panel - Document Preview */}
         <Paper
           elevation={0}
           sx={{
             border: '1px solid #e2e8f0',
-            borderRadius: 3,
+            borderRadius: isCompact ? 2 : 3,
             overflow: 'hidden',
             display: 'flex',
             flexDirection: 'column',
-            minHeight: 600,
+            minHeight: isCompact ? 400 : 600,
           }}
         >
           {/* Preview Header */}
           <Box
             sx={{
-              p: 3,
+              p: isCompact ? 1.5 : 3,
               background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
               color: 'white',
             }}
           >
             <Box display="flex" justifyContent="space-between" alignItems="center">
               <Box>
-                <Typography variant="h6" fontWeight={600}>
+                <Typography variant={isCompact ? 'body2' : 'h6'} fontWeight={600}>
                   Document Preview
                 </Typography>
-                <Typography variant="body2" sx={{ opacity: 0.9, mt: 0.5 }}>
+                <Typography variant="caption" sx={{ opacity: 0.9, mt: 0.25 }}>
                   {draft.metadata.title}
                 </Typography>
               </Box>
 
               {/* Preview Mode Toggle */}
-              <Box display="flex" alignItems="center" gap={1}>
+              <Box display="flex" alignItems="center" gap={0.75}>
                 <Button
                   size="small"
                   onClick={() => setPreviewMode('overview')}
                   sx={{
-                    minWidth: 80,
-                    height: 32,
-                    fontSize: '0.75rem',
+                    minWidth: isCompact ? 65 : 80,
+                    height: isCompact ? 26 : 32,
+                    fontSize: isCompact ? '0.65rem' : '0.75rem',
                     textTransform: 'none',
                     border: '1px solid rgba(255, 255, 255, 0.3)',
                     borderRadius: 2,
@@ -2246,9 +2259,9 @@ function ExportReviewPanel({ draft, currentToc }: ExportReviewPanelProps) {
                   size="small"
                   onClick={() => setPreviewMode('content')}
                   sx={{
-                    minWidth: 80,
-                    height: 32,
-                    fontSize: '0.75rem',
+                    minWidth: isCompact ? 65 : 80,
+                    height: isCompact ? 26 : 32,
+                    fontSize: isCompact ? '0.65rem' : '0.75rem',
                     textTransform: 'none',
                     border: '1px solid rgba(255, 255, 255, 0.3)',
                     borderRadius: 2,
@@ -2269,7 +2282,7 @@ function ExportReviewPanel({ draft, currentToc }: ExportReviewPanelProps) {
           <Box sx={{
             flex: 1,
             overflow: 'auto',
-            p: 3,
+            p: isCompact ? 1.5 : 3,
             // Custom scrollbar styling - neutral theme for preview
             '&::-webkit-scrollbar': {
               width: '6px',
@@ -2293,36 +2306,35 @@ function ExportReviewPanel({ draft, currentToc }: ExportReviewPanelProps) {
               // Overview Mode - Table of Contents with Status
               <Box>
                 {currentToc.map((topic, topicIndex) => (
-                  <Box key={topic.topic_id} sx={{ mb: 3 }}>
+                  <Box key={topic.topic_id} sx={{ mb: isCompact ? 1.5 : 3 }}>
                     {/* Topic Header */}
                     <Paper
                       elevation={0}
                       sx={{
-                        p: 2,
-                        mb: 1,
+                        p: isCompact ? 1 : 2,
+                        mb: 0.75,
                         border: '1px solid #e2e8f0',
-                        borderRadius: 2,
+                        borderRadius: isCompact ? 1.5 : 2,
                         background: topic.content ? '#f0f9f4' : '#fef2f2',
                       }}
                     >
                       <Box display="flex" justifyContent="space-between" alignItems="center">
-                        <Box display="flex" alignItems="center" gap={2}>
+                        <Box display="flex" alignItems="center" gap={isCompact ? 1 : 2}>
                           <Typography
-                            variant="h6"
                             sx={{
                               color: '#2d3748',
                               fontWeight: 600,
-                              fontSize: '1rem',
+                              fontSize: isCompact ? '0.8rem' : '1rem',
                             }}
                           >
                             {topicIndex + 1}. {topic.topic}
                           </Typography>
                         </Box>
-                        <Box display="flex" alignItems="center" gap={1}>
+                        <Box display="flex" alignItems="center" gap={0.75}>
                           {topic.content ? (
-                            <CheckCircle sx={{ color: '#10b981', fontSize: 20 }} />
+                            <CheckCircle sx={{ color: '#10b981', fontSize: isCompact ? 16 : 20 }} />
                           ) : (
-                            <Error sx={{ color: '#ef4444', fontSize: 20 }} />
+                            <Error sx={{ color: '#ef4444', fontSize: isCompact ? 16 : 20 }} />
                           )}
                           <Typography
                             variant="caption"
@@ -2343,30 +2355,29 @@ function ExportReviewPanel({ draft, currentToc }: ExportReviewPanelProps) {
                         key={subtopic.subtopic_id}
                         elevation={0}
                         sx={{
-                          p: 2,
-                          ml: 3,
-                          mb: 1,
+                          p: isCompact ? 0.75 : 2,
+                          ml: isCompact ? 2 : 3,
+                          mb: 0.75,
                           border: '1px solid #e2e8f0',
-                          borderRadius: 2,
+                          borderRadius: isCompact ? 1 : 2,
                           background: subtopic.content ? '#f0f9f4' : '#fef2f2',
                         }}
                       >
                         <Box display="flex" justifyContent="space-between" alignItems="center">
                           <Typography
-                            variant="body1"
                             sx={{
                               color: '#4a5568',
                               fontWeight: 500,
-                              fontSize: '0.9rem',
+                              fontSize: isCompact ? '0.75rem' : '0.9rem',
                             }}
                           >
                             {topicIndex + 1}.{subIndex + 1} {subtopic.topic}
                           </Typography>
-                          <Box display="flex" alignItems="center" gap={1}>
+                          <Box display="flex" alignItems="center" gap={0.75}>
                             {subtopic.content ? (
-                              <CheckCircle sx={{ color: '#10b981', fontSize: 18 }} />
+                              <CheckCircle sx={{ color: '#10b981', fontSize: isCompact ? 14 : 18 }} />
                             ) : (
-                              <Error sx={{ color: '#ef4444', fontSize: 18 }} />
+                              <Error sx={{ color: '#ef4444', fontSize: isCompact ? 14 : 18 }} />
                             )}
                             <Typography
                               variant="caption"
@@ -2388,11 +2399,11 @@ function ExportReviewPanel({ draft, currentToc }: ExportReviewPanelProps) {
               // Content Mode - Full Document Preview
               <Box>
                 {/* Document Header */}
-                <Box sx={{ mb: 4, pb: 3, borderBottom: '2px solid #e2e8f0' }}>
-                  <Typography variant="h4" sx={{ color: '#1a202c', fontWeight: 700, mb: 2, textAlign: 'center' }}>
+                <Box sx={{ mb: isCompact ? 2 : 4, pb: isCompact ? 1.5 : 3, borderBottom: '2px solid #e2e8f0' }}>
+                  <Typography variant={isCompact ? 'h6' : 'h4'} sx={{ color: '#1a202c', fontWeight: 700, mb: isCompact ? 1 : 2, textAlign: 'center' }}>
                     {draft.metadata.title}
                   </Typography>
-                  <Typography variant="body1" sx={{ color: '#64748b', mb: 3, textAlign: 'center' }}>
+                  <Typography variant={isCompact ? 'body2' : 'body1'} sx={{ color: '#64748b', mb: isCompact ? 1.5 : 3, textAlign: 'center' }}>
                     {draft.metadata.description}
                   </Typography>
                   <Box sx={{ textAlign: 'center', color: '#718096' }}>
@@ -2407,15 +2418,15 @@ function ExportReviewPanel({ draft, currentToc }: ExportReviewPanelProps) {
 
                 {/* Document Content */}
                 {currentToc.map((topic, topicIndex) => (
-                  <Box key={topic.topic_id} sx={{ mb: 4 }}>
+                  <Box key={topic.topic_id} sx={{ mb: isCompact ? 2 : 4 }}>
                     {/* Topic Title */}
                     <Typography
-                      variant="h5"
+                      variant={isCompact ? 'body1' : 'h5'}
                       sx={{
                         color: '#1a202c',
                         fontWeight: 700,
-                        mb: 2,
-                        pb: 1,
+                        mb: isCompact ? 1 : 2,
+                        pb: 0.75,
                         borderBottom: '1px solid #e2e8f0',
                       }}
                     >
@@ -2425,38 +2436,38 @@ function ExportReviewPanel({ draft, currentToc }: ExportReviewPanelProps) {
                     {/* Topic Content */}
                     {topic.content ? (
                       <Typography
-                        variant="body1"
+                        variant={isCompact ? 'body2' : 'body1'}
                         sx={{
                           color: '#2d3748',
                           lineHeight: 1.7,
-                          mb: 3,
+                          mb: isCompact ? 1.5 : 3,
                           whiteSpace: 'pre-wrap',
                         }}
                       >
                         {topic.content}
                       </Typography>
                     ) : (
-                      <Alert severity="warning" sx={{ mb: 3 }}>
+                      <Alert severity="warning" sx={{ mb: isCompact ? 1.5 : 3 }}>
                         No content generated for this section yet.
                       </Alert>
                     )}
 
                     {/* Subtopics */}
                     {topic.subtopics.map((subtopic, subIndex) => (
-                      <Box key={subtopic.subtopic_id} sx={{ ml: 2, mb: 3 }}>
+                      <Box key={subtopic.subtopic_id} sx={{ ml: isCompact ? 1.5 : 2, mb: isCompact ? 1.5 : 3 }}>
                         <Typography
-                          variant="h6"
+                          variant={isCompact ? 'body2' : 'h6'}
                           sx={{
                             color: '#2d3748',
                             fontWeight: 600,
-                            mb: 1,
+                            mb: 0.75,
                           }}
                         >
                           {topicIndex + 1}.{subIndex + 1} {subtopic.topic}
                         </Typography>
                         {subtopic.content ? (
                           <Typography
-                            variant="body1"
+                            variant={isCompact ? 'body2' : 'body1'}
                             sx={{
                               color: '#4a5568',
                               lineHeight: 1.6,
@@ -2481,21 +2492,21 @@ function ExportReviewPanel({ draft, currentToc }: ExportReviewPanelProps) {
         </Paper>
 
         {/* Right Panel - Export Options */}
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: isCompact ? 1.5 : 3 }}>
           {/* Export Format Selection */}
           <Paper
             elevation={0}
             sx={{
-              p: 3,
+              p: isCompact ? 1.5 : 3,
               border: '1px solid #e2e8f0',
-              borderRadius: 3,
+              borderRadius: isCompact ? 2 : 3,
             }}
           >
-            <Typography variant="h6" sx={{ color: '#2d3748', fontWeight: 600, mb: 3 }}>
+            <Typography variant={isCompact ? 'body2' : 'h6'} sx={{ color: '#2d3748', fontWeight: 600, mb: isCompact ? 1.5 : 3 }}>
               Export Format
             </Typography>
 
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: isCompact ? 1 : 2 }}>
               {[
                 { format: 'word' as const, icon: InsertDriveFile, title: 'Microsoft Word', description: 'DOCX format, fully editable', color: '#2563eb' },
                 { format: 'pdf' as const, icon: PictureAsPdf, title: 'PDF Document', description: 'Print-ready format', color: '#dc2626' },
@@ -2505,9 +2516,9 @@ function ExportReviewPanel({ draft, currentToc }: ExportReviewPanelProps) {
                   elevation={0}
                   onClick={() => setSelectedExportFormat(format)}
                   sx={{
-                    p: 3,
+                    p: isCompact ? 1.5 : 3,
                     border: selectedExportFormat === format ? `2px solid ${color}` : '1px solid #e2e8f0',
-                    borderRadius: 2,
+                    borderRadius: isCompact ? 1.5 : 2,
                     cursor: 'pointer',
                     background: selectedExportFormat === format ? `${color}08` : 'white',
                     transition: 'all 0.2s ease',
@@ -2518,25 +2529,25 @@ function ExportReviewPanel({ draft, currentToc }: ExportReviewPanelProps) {
                     },
                   }}
                 >
-                  <Box display="flex" alignItems="center" gap={2}>
+                  <Box display="flex" alignItems="center" gap={isCompact ? 1.25 : 2}>
                     <Box
                       sx={{
-                        width: 40,
-                        height: 40,
-                        borderRadius: 2,
+                        width: isCompact ? 30 : 40,
+                        height: isCompact ? 30 : 40,
+                        borderRadius: isCompact ? 1.5 : 2,
                         background: color,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                       }}
                     >
-                      <Icon sx={{ color: 'white', fontSize: 24 }} />
+                      <Icon sx={{ color: 'white', fontSize: isCompact ? 17 : 24 }} />
                     </Box>
                     <Box flex={1}>
-                      <Typography variant="body1" sx={{ fontWeight: 600, color: '#2d3748' }}>
+                      <Typography variant={isCompact ? 'body2' : 'body1'} sx={{ fontWeight: 600, color: '#2d3748' }}>
                         {title}
                       </Typography>
-                      <Typography variant="body2" sx={{ color: '#718096' }}>
+                      <Typography variant="caption" sx={{ color: '#718096' }}>
                         {description}
                       </Typography>
                     </Box>
@@ -2550,32 +2561,33 @@ function ExportReviewPanel({ draft, currentToc }: ExportReviewPanelProps) {
           <Paper
             elevation={0}
             sx={{
-              p: 3,
+              p: isCompact ? 1.5 : 3,
               border: '1px solid #e2e8f0',
-              borderRadius: 3,
+              borderRadius: isCompact ? 2 : 3,
             }}
           >
-            <Typography variant="h6" sx={{ color: '#2d3748', fontWeight: 600, mb: 3 }}>
+            <Typography variant={isCompact ? 'body2' : 'h6'} sx={{ color: '#2d3748', fontWeight: 600, mb: isCompact ? 1.5 : 3 }}>
               Export Actions
             </Typography>
 
             {exportSuccess && (
-              <Alert severity="success" sx={{ mb: 3 }}>
-                Document exported successfully! ✨
+              <Alert severity="success" sx={{ mb: isCompact ? 1.5 : 3 }}>
+                Document exported successfully!
               </Alert>
             )}
 
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: isCompact ? 1 : 2 }}>
               <Button
                 variant="contained"
-                size="large"
-                startIcon={isExporting ? <CircularProgress size={20} color="inherit" /> : <CloudDownload />}
+                size={isCompact ? 'small' : 'large'}
+                startIcon={isExporting ? <CircularProgress size={isCompact ? 16 : 20} color="inherit" /> : <CloudDownload sx={{ fontSize: isCompact ? 18 : undefined }} />}
                 onClick={handleExport}
                 disabled={isExporting || completionPercentage === 0}
                 sx={{
                   background: 'linear-gradient(135deg, #10b981 0%, #065f46 100%)',
-                  py: 1.5,
+                  py: isCompact ? 0.75 : 1.5,
                   fontWeight: 600,
+                  fontSize: isCompact ? '0.75rem' : undefined,
                   '&:hover': {
                     background: 'linear-gradient(135deg, #059669 0%, #064e3b 100%)',
                   },
@@ -2586,14 +2598,15 @@ function ExportReviewPanel({ draft, currentToc }: ExportReviewPanelProps) {
 
               <Button
                 variant="outlined"
-                size="large"
-                startIcon={<Visibility />}
+                size={isCompact ? 'small' : 'large'}
+                startIcon={<Visibility sx={{ fontSize: isCompact ? 18 : undefined }} />}
                 onClick={() => setShowPreviewModal(true)}
                 disabled={completionPercentage === 0}
                 sx={{
                   borderColor: '#667eea',
                   color: '#667eea',
-                  py: 1.5,
+                  py: isCompact ? 0.75 : 1.5,
+                  fontSize: isCompact ? '0.75rem' : undefined,
                   '&:hover': {
                     borderColor: '#5569d8',
                     background: 'rgba(102, 126, 234, 0.1)',
@@ -2610,16 +2623,16 @@ function ExportReviewPanel({ draft, currentToc }: ExportReviewPanelProps) {
           <Paper
             elevation={0}
             sx={{
-              p: 3,
+              p: isCompact ? 1.5 : 3,
               border: '1px solid #e2e8f0',
-              borderRadius: 3,
+              borderRadius: isCompact ? 2 : 3,
             }}
           >
-            <Typography variant="h6" sx={{ color: '#2d3748', fontWeight: 600, mb: 3 }}>
+            <Typography variant={isCompact ? 'body2' : 'h6'} sx={{ color: '#2d3748', fontWeight: 600, mb: isCompact ? 1.5 : 3 }}>
               Document Information
             </Typography>
 
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: isCompact ? 1.25 : 2 }}>
               <Box>
                 <Typography variant="caption" sx={{ color: '#718096', fontWeight: 500 }}>
                   CLIENT
@@ -2666,6 +2679,7 @@ function ExportReviewPanel({ draft, currentToc }: ExportReviewPanelProps) {
         onClose={() => setShowPreviewModal(false)}
         maxWidth="lg"
         fullWidth
+        fullScreen={isMobile}
         PaperProps={{
           sx: {
             height: '90vh',
@@ -2875,6 +2889,9 @@ const DraftEditPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.down('md'));
   const [draft, setDraft] = useState<Draft | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -2906,7 +2923,7 @@ const DraftEditPage: React.FC = () => {
   const [tocChatMode, setTocChatMode] = useState(true); // Default to true since it's now in TOC tab
   const [tocPreview, setTocPreview] = useState<Draft['toc'] | null>(null);
   const [pendingTocOperation, setPendingTocOperation] = useState<any>(null);
-  const [tocChatHistory, setTocChatHistory] = useState<Array<{ user_message: string; ai_response: string }>>([]);
+  const [tocChatHistory, setTocChatHistory] = useState<Array<{ user_message: string; ai_response: string; timestamp: string }>>([]);
   const [tocChatInput, setTocChatInput] = useState('');
   const [tocGeneratingTopics, setTocGeneratingTopics] = useState<Set<string>>(new Set());
   const tocChatEndRef = useRef<HTMLDivElement>(null);
@@ -2960,6 +2977,14 @@ const DraftEditPage: React.FC = () => {
       if (data.metadata?.toc_source) {
         setTocSource(data.metadata.toc_source as 'similarity_search' | 'ai_generated');
       }
+      // Load TOC chat history if available
+      if (data.toc_chat_history && data.toc_chat_history.length > 0) {
+        setTocChatHistory(data.toc_chat_history.map((entry: any) => ({
+          user_message: entry.user_message,
+          ai_response: entry.ai_response,
+          timestamp: entry.timestamp || new Date().toISOString(),
+        })));
+      }
       // Initialize centralized content generation state will be called separately
     } catch (err) {
       setError('Failed to load draft. Please try again.');
@@ -2992,7 +3017,8 @@ const DraftEditPage: React.FC = () => {
       ...prev,
       {
         user_message: userMessage,
-        ai_response: '...' // Temporary loading indicator
+        ai_response: '...', // Temporary loading indicator
+        timestamp: new Date().toISOString(),
       }
     ]);
 
@@ -3017,8 +3043,13 @@ const DraftEditPage: React.FC = () => {
           const updated = [...prev];
           updated[updated.length - 1] = {
             user_message: userMessage,
-            ai_response: response.message
+            ai_response: response.message,
+            timestamp: updated[updated.length - 1].timestamp,
           };
+          // Persist to backend
+          draftService.saveTocChatHistory(draft.id, updated).catch(err =>
+            console.error('Failed to save TOC chat history:', err)
+          );
           return updated;
         });
 
@@ -3670,37 +3701,32 @@ const DraftEditPage: React.FC = () => {
       <Paper
         elevation={0}
         sx={{
-          p: 3,
-          mb: 3,
+          py: 1,
+          px: 2,
+          mb: 1,
           background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
           color: 'white',
-          borderRadius: 3,
+          borderRadius: 2,
         }}
       >
-        <Box display="flex" justifyContent="space-between" alignItems="center">
-          <Box display="flex" alignItems="center" gap={3}>
-            <Button
-              startIcon={<ArrowBack />}
-              onClick={() => navigate('/drafts')}
-              sx={{
-                color: 'white',
-                border: '1px solid rgba(255,255,255,0.3)',
-                '&:hover': {
-                  bgcolor: 'rgba(255,255,255,0.1)',
-                },
-              }}
-            >
-              Back to Drafts
-            </Button>
-            <Box>
-              <Typography variant="h4" component="h1" fontWeight={700} gutterBottom>
-                {draft.metadata.title}
-              </Typography>
-              <Typography variant="body1" sx={{ opacity: 0.9 }}>
-                Policy Document Management
-              </Typography>
-            </Box>
-          </Box>
+        <Box display="flex" alignItems="center" gap={2}>
+          <Button
+            startIcon={<ArrowBack />}
+            onClick={() => navigate('/drafts')}
+            size="small"
+            sx={{
+              color: 'white',
+              border: '1px solid rgba(255,255,255,0.3)',
+              '&:hover': {
+                bgcolor: 'rgba(255,255,255,0.1)',
+              },
+            }}
+          >
+            Back
+          </Button>
+          <Typography variant="body1" component="h1" fontWeight={700} noWrap>
+            {draft.metadata.title}
+          </Typography>
         </Box>
       </Paper>
 
@@ -3708,8 +3734,8 @@ const DraftEditPage: React.FC = () => {
       <Paper
         elevation={0}
         sx={{
-          mb: 3,
-          borderRadius: 3,
+          mb: 1,
+          borderRadius: 2,
           background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.03) 0%, rgba(118, 75, 162, 0.03) 100%)',
           border: '1px solid rgba(102, 126, 234, 0.1)',
           overflow: 'hidden',
@@ -3718,20 +3744,21 @@ const DraftEditPage: React.FC = () => {
         <Tabs
           value={tabValue}
           onChange={handleTabChange}
-          variant="fullWidth"
+          variant={isMobile ? 'scrollable' : 'fullWidth'}
+          scrollButtons={isMobile ? 'auto' : false}
           sx={{
-            minHeight: 70,
-            px: 2,
+            minHeight: 40,
+            px: { xs: 0, md: 1 },
             '& .MuiTabs-flexContainer': {
-              gap: 1,
+              gap: 0.5,
             },
             '& .MuiTab-root': {
               fontWeight: 600,
-              fontSize: '0.95rem',
+              fontSize: '0.8rem',
               textTransform: 'none',
-              minHeight: 70,
-              px: 3,
-              py: 2,
+              minHeight: 40,
+              px: 1.5,
+              py: 0.5,
               borderRadius: 2,
               color: '#64748b',
               transition: 'all 0.3s ease',
@@ -3742,8 +3769,8 @@ const DraftEditPage: React.FC = () => {
                 transform: 'translateY(-2px)',
               },
               '& .MuiSvgIcon-root': {
-                fontSize: 22,
-                mb: 0.5,
+                fontSize: 18,
+                mb: 0,
               },
             },
             '& .Mui-selected': {
@@ -3788,19 +3815,23 @@ const DraftEditPage: React.FC = () => {
 
       <TabPanel value={tabValue} index={0}>
         <Box sx={{ maxWidth: '1200px' }}>
-          <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-            <Typography variant="h5" fontWeight={600} sx={{ color: '#1a202c' }}>
+          <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+            <Typography variant="body1" fontWeight={600} sx={{ color: '#1a202c' }}>
               Draft Overview
             </Typography>
             <Button
               variant="contained"
-              startIcon={<Edit />}
+              size="small"
+              startIcon={<Edit sx={{ fontSize: 14 }} />}
               onClick={() => navigate('/drafts/new', { state: { editDraft: draft } })}
               sx={{
                 background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                 textTransform: 'none',
-                px: 3,
+                px: 1.5,
+                py: 0.5,
                 fontWeight: 600,
+                fontSize: '0.7rem',
+                minHeight: 0,
                 '&:hover': {
                   background: 'linear-gradient(135deg, #5569d8 0%, #6a4291 100%)',
                 },
@@ -3810,51 +3841,44 @@ const DraftEditPage: React.FC = () => {
             </Button>
           </Box>
 
-          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3 }}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
             {/* Policy Details & Requirements */}
             <Paper
               elevation={0}
               sx={{
-                p: 4,
-                borderRadius: 3,
+                p: 2,
+                borderRadius: 2,
                 border: '1px solid rgba(102, 126, 234, 0.2)',
                 background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.04) 0%, rgba(118, 75, 162, 0.04) 100%)',
                 gridColumn: { xs: '1', md: '1 / -1' },
               }}
             >
-              <Box display="flex" alignItems="center" gap={2} mb={4}>
+              <Box display="flex" alignItems="center" gap={1} mb={2}>
                 <Box
                   sx={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: 3,
+                    width: 32,
+                    height: 32,
+                    borderRadius: 1.5,
                     background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                   }}
                 >
-                  <Article sx={{ color: 'white', fontSize: 24 }} />
+                  <Article sx={{ color: 'white', fontSize: 17 }} />
                 </Box>
-                <Typography variant="h6" fontWeight={600} sx={{ color: '#2d3748' }}>
+                <Typography variant="body2" fontWeight={600} sx={{ color: '#2d3748' }}>
                   Policy Details & Requirements
                 </Typography>
               </Box>
 
-              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr 1fr 1fr' }, gap: 4, mb: 3 }}>
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr 1fr 1fr' }, gap: 2, mb: 2 }}>
                 {/* Title */}
                 <Box>
-                  <Typography variant="body2" sx={{
-                    color: '#667eea',
-                    fontWeight: 700,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px',
-                    fontSize: '0.9rem',
-                    mb: 1
-                  }}>
+                  <Typography sx={{ color: '#667eea', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.3px', fontSize: '0.65rem', mb: 0.5 }}>
                     Title
                   </Typography>
-                  <Typography variant="body1" sx={{ color: '#2d3748', lineHeight: 1.5, fontSize: '1.05rem' }}>
+                  <Typography sx={{ color: '#2d3748', fontSize: '0.8rem', lineHeight: 1.4 }}>
                     {draft.metadata.title}
                   </Typography>
                 </Box>
@@ -3862,17 +3886,10 @@ const DraftEditPage: React.FC = () => {
                 {/* Policy Function */}
                 {draft.metadata.function && (
                   <Box>
-                    <Typography variant="body2" sx={{
-                      color: '#667eea',
-                      fontWeight: 700,
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.5px',
-                      fontSize: '0.9rem',
-                      mb: 1
-                    }}>
+                    <Typography sx={{ color: '#667eea', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.3px', fontSize: '0.65rem', mb: 0.5 }}>
                       Function
                     </Typography>
-                    <Typography variant="body1" sx={{ color: '#2d3748', lineHeight: 1.5, fontSize: '1.05rem' }}>
+                    <Typography sx={{ color: '#2d3748', fontSize: '0.8rem', lineHeight: 1.4 }}>
                       {draft.metadata.function}
                     </Typography>
                   </Box>
@@ -3881,17 +3898,10 @@ const DraftEditPage: React.FC = () => {
                 {/* Regulations */}
                 {draft.metadata.regulations && (
                   <Box>
-                    <Typography variant="body2" sx={{
-                      color: '#667eea',
-                      fontWeight: 700,
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.5px',
-                      fontSize: '0.9rem',
-                      mb: 1
-                    }}>
+                    <Typography sx={{ color: '#667eea', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.3px', fontSize: '0.65rem', mb: 0.5 }}>
                       Regulations
                     </Typography>
-                    <Typography variant="body1" sx={{ color: '#2d3748', lineHeight: 1.5, fontSize: '1.05rem' }}>
+                    <Typography sx={{ color: '#2d3748', fontSize: '0.8rem', lineHeight: 1.4 }}>
                       {draft.metadata.regulations}
                     </Typography>
                   </Box>
@@ -3900,17 +3910,10 @@ const DraftEditPage: React.FC = () => {
                 {/* Detail Level */}
                 {draft.metadata.detail_level && (
                   <Box>
-                    <Typography variant="body2" sx={{
-                      color: '#667eea',
-                      fontWeight: 700,
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.5px',
-                      fontSize: '0.9rem',
-                      mb: 1
-                    }}>
+                    <Typography sx={{ color: '#667eea', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.3px', fontSize: '0.65rem', mb: 0.5 }}>
                       Detail Level
                     </Typography>
-                    <Typography variant="body1" sx={{ color: '#2d3748', lineHeight: 1.5, fontSize: '1.05rem' }}>
+                    <Typography sx={{ color: '#2d3748', fontSize: '0.8rem', lineHeight: 1.4 }}>
                       Level {draft.metadata.detail_level} of 5
                     </Typography>
                   </Box>
@@ -3919,20 +3922,13 @@ const DraftEditPage: React.FC = () => {
 
               {/* Long text fields */}
               {(draft.metadata.client_specific_requests || draft.metadata.sector_specific_comments) && (
-                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 4, pt: 3, mt: 3, borderTop: '2px solid rgba(102, 126, 234, 0.15)' }}>
+                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2, pt: 1.5, mt: 1.5, borderTop: '1px solid rgba(102, 126, 234, 0.15)' }}>
                   {draft.metadata.client_specific_requests && (
                     <Box>
-                      <Typography variant="body2" sx={{
-                        color: '#667eea',
-                        fontWeight: 700,
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.5px',
-                        fontSize: '0.9rem',
-                        mb: 1.5
-                      }}>
+                      <Typography sx={{ color: '#667eea', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.3px', fontSize: '0.65rem', mb: 0.5 }}>
                         Client Specific Requirements
                       </Typography>
-                      <Typography variant="body2" sx={{ color: '#2d3748', lineHeight: 1.7, fontSize: '1rem' }}>
+                      <Typography sx={{ color: '#2d3748', fontSize: '0.8rem', lineHeight: 1.6 }}>
                         {draft.metadata.client_specific_requests}
                       </Typography>
                     </Box>
@@ -3940,17 +3936,10 @@ const DraftEditPage: React.FC = () => {
 
                   {draft.metadata.sector_specific_comments && (
                     <Box>
-                      <Typography variant="body2" sx={{
-                        color: '#667eea',
-                        fontWeight: 700,
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.5px',
-                        fontSize: '0.9rem',
-                        mb: 1.5
-                      }}>
+                      <Typography sx={{ color: '#667eea', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.3px', fontSize: '0.65rem', mb: 0.5 }}>
                         Sector Comments
                       </Typography>
-                      <Typography variant="body2" sx={{ color: '#2d3748', lineHeight: 1.7, fontSize: '1rem' }}>
+                      <Typography sx={{ color: '#2d3748', fontSize: '0.8rem', lineHeight: 1.6 }}>
                         {draft.metadata.sector_specific_comments}
                       </Typography>
                     </Box>
@@ -3963,101 +3952,66 @@ const DraftEditPage: React.FC = () => {
             <Paper
               elevation={0}
               sx={{
-                p: 4,
-                borderRadius: 3,
+                p: 2,
+                borderRadius: 2,
                 border: '1px solid rgba(16, 185, 129, 0.2)',
                 background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.04) 0%, rgba(6, 95, 70, 0.04) 100%)',
               }}
             >
-              <Box display="flex" alignItems="center" gap={2} mb={4}>
+              <Box display="flex" alignItems="center" gap={1} mb={2}>
                 <Box
                   sx={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: 3,
+                    width: 32,
+                    height: 32,
+                    borderRadius: 1.5,
                     background: 'linear-gradient(135deg, #10b981 0%, #065f46 100%)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                   }}
                 >
-                  <Business sx={{ color: 'white', fontSize: 24 }} />
+                  <Business sx={{ color: 'white', fontSize: 17 }} />
                 </Box>
-                <Typography variant="h6" fontWeight={600} sx={{ color: '#2d3748' }}>
+                <Typography variant="body2" fontWeight={600} sx={{ color: '#2d3748' }}>
                   Client Information
                 </Typography>
               </Box>
 
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                {/* Client Name and Industry side by side */}
-                <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3, width: '100%' }}>
-                  <Box sx={{ minWidth: 0 }}>
-                    <Typography variant="body2" sx={{
-                      color: '#10b981',
-                      fontWeight: 700,
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.5px',
-                      fontSize: '0.9rem',
-                      mb: 1
-                    }}>
-                      Client Name
-                    </Typography>
-                    <Typography variant="body1" sx={{ color: '#2d3748', fontSize: '1.1rem', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {draft.metadata.client_metadata.name}
-                    </Typography>
-                  </Box>
-                  <Box sx={{ minWidth: 0 }}>
-                    <Typography variant="body2" sx={{
-                      color: '#10b981',
-                      fontWeight: 700,
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.5px',
-                      fontSize: '0.9rem',
-                      mb: 1
-                    }}>
-                      Industry
-                    </Typography>
-                    <Typography variant="body2" sx={{ color: '#2d3748', fontSize: '1.05rem', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {draft.metadata.client_metadata.industry || 'N/A'}
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography sx={{ color: '#10b981', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.3px', fontSize: '0.65rem', mb: 0.5 }}>
+                    Client Name
+                  </Typography>
+                  <Typography sx={{ color: '#2d3748', fontSize: '0.8rem', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {draft.metadata.client_metadata.name}
+                  </Typography>
+                </Box>
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography sx={{ color: '#10b981', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.3px', fontSize: '0.65rem', mb: 0.5 }}>
+                    Industry
+                  </Typography>
+                  <Typography sx={{ color: '#2d3748', fontSize: '0.8rem', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {draft.metadata.client_metadata.industry || 'N/A'}
+                  </Typography>
+                </Box>
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography sx={{ color: '#10b981', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.3px', fontSize: '0.65rem', mb: 0.5 }}>
+                    Country
+                  </Typography>
+                  <Box display="flex" alignItems="center" gap={0.5}>
+                    <LocationOn sx={{ fontSize: 15, color: '#10b981' }} />
+                    <Typography sx={{ color: '#2d3748', fontSize: '0.8rem', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {draft.metadata.client_metadata.country}
                     </Typography>
                   </Box>
                 </Box>
-
-                {/* Country and City side by side */}
-                <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3, width: '100%' }}>
-                  <Box sx={{ minWidth: 0 }}>
-                    <Typography variant="body2" sx={{
-                      color: '#10b981',
-                      fontWeight: 700,
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.5px',
-                      fontSize: '0.9rem',
-                      mb: 1
-                    }}>
-                      Country
-                    </Typography>
-                    <Box display="flex" alignItems="center" gap={1}>
-                      <LocationOn sx={{ fontSize: 20, color: '#10b981' }} />
-                      <Typography variant="body2" sx={{ color: '#2d3748', fontSize: '1.05rem', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {draft.metadata.client_metadata.country}
-                      </Typography>
-                    </Box>
-                  </Box>
-                  <Box sx={{ minWidth: 0 }}>
-                    <Typography variant="body2" sx={{
-                      color: '#10b981',
-                      fontWeight: 700,
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.5px',
-                      fontSize: '0.9rem',
-                      mb: 1
-                    }}>
-                      City
-                    </Typography>
-                    <Typography variant="body2" sx={{ color: '#2d3748', fontSize: '1.05rem', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {draft.metadata.client_metadata.city || 'N/A'}
-                    </Typography>
-                  </Box>
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography sx={{ color: '#10b981', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.3px', fontSize: '0.65rem', mb: 0.5 }}>
+                    City
+                  </Typography>
+                  <Typography sx={{ color: '#2d3748', fontSize: '0.8rem', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {draft.metadata.client_metadata.city || 'N/A'}
+                  </Typography>
                 </Box>
               </Box>
             </Paper>
@@ -4066,82 +4020,61 @@ const DraftEditPage: React.FC = () => {
             <Paper
               elevation={0}
               sx={{
-                p: 4,
-                borderRadius: 3,
+                p: 2,
+                borderRadius: 2,
                 border: '1px solid rgba(245, 158, 11, 0.2)',
                 background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.06) 0%, rgba(217, 119, 6, 0.06) 100%)',
               }}
             >
-              <Box display="flex" alignItems="center" gap={2} mb={4}>
+              <Box display="flex" alignItems="center" gap={1} mb={2}>
                 <Box
                   sx={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: 3,
+                    width: 32,
+                    height: 32,
+                    borderRadius: 1.5,
                     background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                   }}
                 >
-                  <CalendarToday sx={{ color: 'white', fontSize: 24 }} />
+                  <CalendarToday sx={{ color: 'white', fontSize: 17 }} />
                 </Box>
-                <Typography variant="h6" fontWeight={600} sx={{ color: '#2d3748' }}>
+                <Typography variant="body2" fontWeight={600} sx={{ color: '#2d3748' }}>
                   Timeline
                 </Typography>
               </Box>
 
-              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr 1fr' }, gap: 4 }}>
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr 1fr' }, gap: 2 }}>
                 <Box>
-                  <Typography variant="body2" sx={{
-                    color: '#f59e0b',
-                    fontWeight: 700,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px',
-                    fontSize: '0.9rem',
-                    mb: 1
-                  }}>
+                  <Typography sx={{ color: '#f59e0b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.3px', fontSize: '0.65rem', mb: 0.5 }}>
                     Created
                   </Typography>
-                  <Typography variant="body2" sx={{ color: '#2d3748', fontSize: '1.05rem', fontWeight: 500 }}>
+                  <Typography sx={{ color: '#2d3748', fontSize: '0.8rem', fontWeight: 500 }}>
                     {new Date(draft.metadata.created_at).toLocaleDateString()}
                   </Typography>
-                  <Typography variant="caption" sx={{ color: '#718096', fontSize: '0.85rem' }}>
+                  <Typography sx={{ color: '#718096', fontSize: '0.7rem' }}>
                     {new Date(draft.metadata.created_at).toLocaleTimeString()}
                   </Typography>
                 </Box>
                 <Box>
-                  <Typography variant="body2" sx={{
-                    color: '#f59e0b',
-                    fontWeight: 700,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px',
-                    fontSize: '0.9rem',
-                    mb: 1
-                  }}>
+                  <Typography sx={{ color: '#f59e0b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.3px', fontSize: '0.65rem', mb: 0.5 }}>
                     Last Modified
                   </Typography>
-                  <Typography variant="body2" sx={{ color: '#2d3748', fontSize: '1.05rem', fontWeight: 500 }}>
+                  <Typography sx={{ color: '#2d3748', fontSize: '0.8rem', fontWeight: 500 }}>
                     {new Date(draft.metadata.modified_at).toLocaleDateString()}
                   </Typography>
-                  <Typography variant="caption" sx={{ color: '#718096', fontSize: '0.85rem' }}>
+                  <Typography sx={{ color: '#718096', fontSize: '0.7rem' }}>
                     {new Date(draft.metadata.modified_at).toLocaleTimeString()}
                   </Typography>
                 </Box>
                 <Box>
-                  <Typography variant="body2" sx={{
-                    color: '#f59e0b',
-                    fontWeight: 700,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px',
-                    fontSize: '0.9rem',
-                    mb: 1
-                  }}>
+                  <Typography sx={{ color: '#f59e0b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.3px', fontSize: '0.65rem', mb: 0.5 }}>
                     Author
                   </Typography>
-                  <Box display="flex" alignItems="center" gap={1}>
-                    <Person sx={{ fontSize: 20, color: '#f59e0b' }} />
-                    <Typography variant="body2" sx={{ color: '#2d3748', fontSize: '1.05rem' }}>
+                  <Box display="flex" alignItems="center" gap={0.5}>
+                    <Person sx={{ fontSize: 15, color: '#f59e0b' }} />
+                    <Typography sx={{ color: '#2d3748', fontSize: '0.8rem' }}>
                       {draft.metadata.created_by}
                     </Typography>
                   </Box>
@@ -4153,14 +4086,14 @@ const DraftEditPage: React.FC = () => {
       </TabPanel>
 
       <TabPanel value={tabValue} index={1}>
-        <Box sx={{ display: 'flex', gap: 3, height: 'calc(100vh - 300px)', minHeight: 600 }}>
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2, height: { xs: 'auto', md: 'calc(100vh - 280px)' }, minHeight: { md: 500 } }}>
           {/* Left Panel - TOC Management */}
-          <Box sx={{ flex: '1 1 50%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <Box sx={{ flex: '1 1 50%', display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: { xs: 350, md: 'auto' } }}>
             {/* TOC Header */}
-            <Box mb={3}>
-              <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+            <Box mb={1.5}>
+              <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
                 <Box>
-                  <Typography variant="h5" fontWeight={600} sx={{ color: '#1a202c' }}>
+                  <Typography variant="body1" fontWeight={600} sx={{ color: '#1a202c' }}>
                     Table of Contents
                   </Typography>
                 </Box>
@@ -4171,15 +4104,15 @@ const DraftEditPage: React.FC = () => {
                         display: 'flex',
                         alignItems: 'center',
                         gap: 0.5,
-                        px: 1.5,
-                        py: 0.5,
-                        borderRadius: 2,
+                        px: 1,
+                        py: 0.3,
+                        borderRadius: 1.5,
                         background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                         color: 'white',
                       }}
                     >
-                      <AutoAwesome sx={{ fontSize: 16 }} />
-                      <Typography variant="caption" fontWeight={600}>
+                      <AutoAwesome sx={{ fontSize: 13 }} />
+                      <Typography sx={{ fontSize: '0.7rem', fontWeight: 600 }}>
                         AI Generated
                       </Typography>
                     </Box>
@@ -4192,15 +4125,15 @@ const DraftEditPage: React.FC = () => {
                         display: 'flex',
                         alignItems: 'center',
                         gap: 0.5,
-                        px: 1.5,
-                        py: 0.5,
-                        borderRadius: 2,
+                        px: 1,
+                        py: 0.3,
+                        borderRadius: 1.5,
                         background: '#10b981',
                         color: 'white',
                       }}
                     >
-                      <Source sx={{ fontSize: 16 }} />
-                      <Typography variant="caption" fontWeight={600}>
+                      <Source sx={{ fontSize: 13 }} />
+                      <Typography sx={{ fontSize: '0.7rem', fontWeight: 600 }}>
                         Template Based
                       </Typography>
                     </Box>
@@ -4210,19 +4143,22 @@ const DraftEditPage: React.FC = () => {
             </Box>
             <Button
               variant="contained"
-              startIcon={<Add />}
+              size="small"
+              startIcon={<Add sx={{ fontSize: 16 }} />}
               onClick={() => setOpenAddDialog(true)}
               sx={{
                 background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                 textTransform: 'none',
                 fontWeight: 600,
-                px: 3,
+                fontSize: '0.75rem',
+                px: 2,
+                py: 0.5,
               }}
             >
               Add New Topic
             </Button>
 
-            <Typography variant="body2" sx={{ color: '#64748b', mb: 4, mt: 3 }}>
+            <Typography variant="caption" sx={{ color: '#64748b', mb: 2, mt: 1.5, display: 'block' }}>
               {tocSource === 'ai_generated'
                 ? 'AI has suggested this structure based on your policy description. You can customize it as needed.'
                 : 'Organize your policy document structure. Click and drag to reorder, edit titles, or delete sections as needed.'}
@@ -4300,10 +4236,11 @@ const DraftEditPage: React.FC = () => {
             </Box>
 
             {/* Save TOC Button */}
-            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 1.5 }}>
             <Button
               variant="contained"
-              startIcon={<Save />}
+              size="small"
+              startIcon={<Save sx={{ fontSize: 16 }} />}
               onClick={handleSaveToc}
               disabled={!hasUnsavedChanges || saving}
               sx={{
@@ -4312,8 +4249,9 @@ const DraftEditPage: React.FC = () => {
                   : 'rgba(255,255,255,0.9)',
                 color: hasUnsavedChanges || saving ? 'white' : '#667eea',
                 fontWeight: 600,
-                px: 4,
-                py: 1.5,
+                fontSize: '0.75rem',
+                px: 2.5,
+                py: 0.75,
                 border: hasUnsavedChanges || saving ? 'none' : '2px solid rgba(102, 126, 234, 0.3)',
                 boxShadow: hasUnsavedChanges || saving ? '0 4px 12px rgba(102, 126, 234, 0.25)' : 'none',
                 '&:hover': {
@@ -4342,36 +4280,57 @@ const DraftEditPage: React.FC = () => {
             flex: '1 1 50%',
             display: 'flex',
             flexDirection: 'column',
-            borderLeft: '1px solid #e2e8f0',
-            pl: 3,
-            overflow: 'hidden'
+            borderLeft: { xs: 'none', md: '1px solid #e2e8f0' },
+            borderTop: { xs: '1px solid #e2e8f0', md: 'none' },
+            pl: { xs: 0, md: 2 },
+            pt: { xs: 1.5, md: 0 },
+            overflow: 'hidden',
+            minHeight: { xs: 350, md: 'auto' },
           }}>
             {/* Chat Header - More Compact */}
             <Box sx={{
-              mb: 2,
-              pb: 1.5,
+              mb: 1,
+              pb: 1,
               borderBottom: '2px solid #e2e8f0'
             }}>
               <Box display="flex" alignItems="center" justifyContent="space-between">
                 <Box>
-                  <Typography variant="h6" fontWeight={600} sx={{ color: '#1a202c' }}>
+                  <Typography variant="body2" fontWeight={600} sx={{ color: '#1a202c' }}>
                     AI TOC Assistant
                   </Typography>
-                  <Typography variant="caption" sx={{ color: '#64748b' }}>
+                  <Typography sx={{ fontSize: '0.65rem', color: '#64748b' }}>
                     Modify table of contents with natural language
                   </Typography>
                 </Box>
+                {tocChatHistory.length > 0 && (
+                  <Tooltip title="Clear conversation">
+                    <IconButton
+                      size="small"
+                      onClick={() => {
+                        setTocChatHistory([]);
+                        if (draft) {
+                          draftService.saveTocChatHistory(draft.id, []).catch(err =>
+                            console.error('Failed to clear TOC chat history:', err)
+                          );
+                        }
+                      }}
+                      sx={{ color: '#ef4444', '&:hover': { backgroundColor: 'rgba(239, 68, 68, 0.08)' } }}
+                    >
+                      <Delete sx={{ fontSize: 16 }} />
+                    </IconButton>
+                  </Tooltip>
+                )}
               </Box>
             </Box>
 
             {/* Chat Messages Area - Scrollable with Fixed Height */}
             <Box sx={{
-              height: 'calc(100vh - 400px)', // Fixed height that accounts for header, input, etc.
-              minHeight: '400px',
-              maxHeight: '600px',
+              height: 'calc(100vh - 360px)',
+              minHeight: '300px',
+              maxHeight: '500px',
               overflow: 'auto',
-              mb: 2,
-              p: 2,
+              mb: 1,
+              p: 1.5,
               borderRadius: 2,
               background: '#f9fafb',
               display: 'flex',
@@ -4398,11 +4357,11 @@ const DraftEditPage: React.FC = () => {
                   py: 3,
                   color: '#94a3b8'
                 }}>
-                  <EditNote sx={{ fontSize: 36, mb: 1, opacity: 0.5 }} />
-                  <Typography variant="body2" fontWeight={600} sx={{ mb: 1 }}>
+                  <EditNote sx={{ fontSize: 28, mb: 0.5, opacity: 0.5 }} />
+                  <Typography variant="caption" fontWeight={600} sx={{ mb: 0.5 }}>
                     Start a conversation
                   </Typography>
-                  <Typography variant="caption" sx={{ maxWidth: 350, mx: 'auto', display: 'block' }}>
+                  <Typography sx={{ fontSize: '0.65rem', maxWidth: 300, mx: 'auto', display: 'block', color: '#94a3b8' }}>
                     Try: "Add security section" or "Rename Overview"
                   </Typography>
                 </Box>
@@ -4416,14 +4375,14 @@ const DraftEditPage: React.FC = () => {
                       mb: 0.5
                     }}>
                       <Paper sx={{
-                        px: 2,
-                        py: 1,
-                        maxWidth: '70%',
+                        px: 1.5,
+                        py: 0.75,
+                        maxWidth: '75%',
                         background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                         color: 'white',
                         borderRadius: 1.5
                       }}>
-                        <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>{entry.user_message}</Typography>
+                        <Typography sx={{ fontSize: '0.75rem' }}>{entry.user_message}</Typography>
                       </Paper>
                     </Box>
                     {/* AI Response */}
@@ -4433,25 +4392,24 @@ const DraftEditPage: React.FC = () => {
                       mb: 1
                     }}>
                       <Paper sx={{
-                        px: 2,
-                        py: 1,
-                        maxWidth: '70%',
+                        px: 1.5,
+                        py: 0.75,
+                        maxWidth: '75%',
                         background: 'white',
                         borderRadius: 1.5,
                         border: '1px solid #e2e8f0'
                       }}>
                         {entry.ai_response === '...' ? (
-                          <Box display="flex" alignItems="center" gap={1}>
-                            <CircularProgress size={16} />
-                            <Typography variant="body2" sx={{ fontSize: '0.875rem', color: '#94a3b8' }}>
+                          <Box display="flex" alignItems="center" gap={0.75}>
+                            <CircularProgress size={14} />
+                            <Typography sx={{ fontSize: '0.75rem', color: '#94a3b8' }}>
                               Thinking...
                             </Typography>
                           </Box>
                         ) : (
                           <Typography
-                            variant="body2"
                             sx={{
-                              fontSize: '0.875rem',
+                              fontSize: '0.75rem',
                               whiteSpace: 'pre-wrap', // Preserve line breaks and spacing
                               wordBreak: 'break-word' // Prevent long words from breaking layout
                             }}
@@ -4521,13 +4479,14 @@ const DraftEditPage: React.FC = () => {
             {/* Chat Input Area - Compact */}
             <Box sx={{
               display: 'flex',
-              gap: 1,
-              p: 1.5,
+              gap: 0.75,
+              p: 1,
               borderTop: '1px solid #e2e8f0',
               background: 'white'
             }}>
               <TextField
                 fullWidth
+                size="small"
                 multiline
                 maxRows={2}
                 placeholder="Type a command... e.g., 'Add security section'"
@@ -4550,7 +4509,7 @@ const DraftEditPage: React.FC = () => {
                     }
                   },
                   '& .MuiInputBase-input': {
-                    fontSize: '0.875rem'
+                    fontSize: '0.75rem'
                   }
                 }}
               />
@@ -4562,8 +4521,8 @@ const DraftEditPage: React.FC = () => {
                 })}
                 disabled={!tocChatInput.trim() || tocGeneratingTopics.has('toc-chat')}
                 sx={{
-                  minWidth: 48,
-                  height: 48,
+                  minWidth: 38,
+                  height: 38,
                   borderRadius: 1.5,
                   background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                   '&:hover': {
@@ -4572,9 +4531,9 @@ const DraftEditPage: React.FC = () => {
                 }}
               >
                 {tocGeneratingTopics.has('toc-chat') ? (
-                  <CircularProgress size={20} sx={{ color: 'white' }} />
+                  <CircularProgress size={16} sx={{ color: 'white' }} />
                 ) : (
-                  <Send sx={{ color: 'white' }} />
+                  <Send sx={{ color: 'white', fontSize: 18 }} />
                 )}
               </Button>
             </Box>

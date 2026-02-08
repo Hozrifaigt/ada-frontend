@@ -207,5 +207,14 @@ export const draftService = {
     return response.data;
   },
 
+  async saveTocChatHistory(
+    draftId: string,
+    conversationHistory: Array<{ user_message: string; ai_response: string; timestamp?: string }>
+  ): Promise<void> {
+    await apiClient.put(`/api/v1/drafts/${draftId}/toc/chat-history`, {
+      conversation_history: conversationHistory,
+    });
+  },
+
   // Policy type methods removed - no longer using Excel templates
 };
