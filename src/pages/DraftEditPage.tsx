@@ -926,7 +926,6 @@ function ContentGenerationPanel({
       markContentAsSaved(currentItemId);
       updateCurrentContent(currentItemId, generatedContent);
 
-      // Show success message
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000); // Hide after 3 seconds
 
