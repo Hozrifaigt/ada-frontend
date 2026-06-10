@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   Box,
   Paper,
@@ -16,6 +16,14 @@ import {
   MenuItem,
   InputLabel,
   Slider,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Card,
+  CardContent,
+  CardActions,
+  Chip,
   useMediaQuery,
   useTheme,
 } from '@mui/material';
@@ -26,7 +34,15 @@ import {
   Description,
   CheckCircleOutline,
   EditNote,
+  AutoAwesome,
+  UploadFile,
+  Article,
+  Gavel,
+  History,
+  PolicyOutlined,
+  CheckCircle,
 } from '@mui/icons-material';
+import { SimilarPolicy } from '../types/draft.types';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Country, State } from 'country-state-city';
 import { draftService } from '../services/draftService';
@@ -55,7 +71,26 @@ const NewDraftPage: React.FC = () => {
   const editDraft = (location.state as { editDraft?: Draft })?.editDraft;
 
   const [loading, setLoading] = useState(false);
+  // Tracks which action in the similar-policy dialog is in progress:
+  // a policy_id when "Use this policy" is clicked, or '__ai__' for "Generate with AI".
+  const [applyingId, setApplyingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [startingPoint, setStartingPoint] = useState<'ai' | 'upload'>('ai');
+  const [currentPolicyFile, setCurrentPolicyFile] = useState<File | null>(null);
+  const [previousPolicyFile, setPreviousPolicyFile] = useState<File | null>(null);
+  const [regulationsFiles, setRegulationsFiles] = useState<File[]>([]);
+  const currentPolicyRef = useRef<HTMLInputElement>(null);
+  const previousPolicyRef = useRef<HTMLInputElement>(null);
+  const regulationsRef = useRef<HTMLInputElement>(null);
+  const [pendingDraftId, setPendingDraftId] = useState<string | null>(null);
+  const [similarPolicies, setSimilarPolicies] = useState<SimilarPolicy[]>([]);
+  const [descriptionCheck, setDescriptionCheck] = useState<{
+    is_valid: boolean;
+    score: number;
+    issues: string[];
+    improved_description?: string;
+  } | null>(null);
+  const [checkingDescription, setCheckingDescription] = useState(false);
 
   // Get UAE as default country or from edit draft
   const uaeCountry = Country.getAllCountries().find(c => c.isoCode === 'AE');
@@ -80,8 +115,8 @@ const NewDraftPage: React.FC = () => {
     detail_level: editDraft?.metadata.detail_level || 3,
   });
 
-  // Static list of functions
-  const functions = ['HR', 'IT', 'Legal', 'Finance', 'Operations'];
+  // Static list of functions — must match the SharePoint root folder names exactly (case-sensitive)
+  const functions = ['Finance', 'Governance', 'HR', 'IT', 'Procurement'];
 
   // Get all countries and states (for UAE, these are the emirates)
   // Filter out Israel from the country list
@@ -133,24 +168,114 @@ const NewDraftPage: React.FC = () => {
     });
   };
 
+  const handleCurrentPolicyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    if (file && !file.name.endsWith('.docx')) {
+      setError('Current Client Policy must be a .docx file.');
+    } else {
+      setError(null);
+      setCurrentPolicyFile(file);
+    }
+  };
+
+  const handlePreviousPolicyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    if (file && !file.name.endsWith('.docx')) {
+      setError('Previous Policy must be a .docx file.');
+    } else {
+      setError(null);
+      setPreviousPolicyFile(file);
+    }
+  };
+
+  const handleRegulationsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    setError(null);
+    setRegulationsFiles(files);
+  };
+
+  const handleCheckDescription = async () => {
+    setCheckingDescription(true);
+    try {
+      const result = await draftService.validateDraft(formData);
+      setDescriptionCheck({
+        is_valid: result.is_valid,
+        score: result.description_quality_score,
+        issues: result.issues,
+        improved_description: result.improved_description ?? undefined,
+      });
+    } catch {
+      setError('Failed to check description. Please try again.');
+    } finally {
+      setCheckingDescription(false);
+    }
+  };
+
+  const handleImproveDescription = () => {
+    if (!descriptionCheck?.improved_description) return;
+    setFormData(prev => ({ ...prev, description: descriptionCheck.improved_description! }));
+    setDescriptionCheck(prev => prev ? { ...prev, is_valid: true, issues: [] } : null);
+  };
+
+  const handleApplyPolicy = async (policyId: string | null) => {
+    if (!pendingDraftId) return;
+    setApplyingId(policyId ?? '__ai__');
+    try {
+      await draftService.applyPolicy(pendingDraftId, policyId);
+      navigate(`/drafts/${pendingDraftId}`, {
+        state: { tocSource: policyId ? 'similar_policy' : 'ai_generated' }
+      });
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to apply policy. Please try again.');
+      setSimilarPolicies([]);
+      setPendingDraftId(null);
+    } finally {
+      setApplyingId(null);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
 
     try {
+      // Normalize "None" regulations selection to empty string so the backend
+      // skips regulation retrieval entirely.
+      const payload: CreateDraftRequest = {
+        ...formData,
+        regulations: formData.regulations === 'None' ? '' : formData.regulations,
+      };
+
       if (editDraft) {
-        // Update existing draft metadata
-        await draftService.updateDraftMetadata(editDraft.id, formData);
-        // Navigate back to the draft
+        await draftService.updateDraftMetadata(editDraft.id, payload);
         navigate(`/drafts/${editDraft.id}`);
-      } else {
-        // Create new draft
-        const response = await draftService.createDraft(formData);
-        // Pass the TOC source info through navigation state
+      } else if (startingPoint === 'upload' && currentPolicyFile) {
+        const response = await draftService.createDraftFromUpload(payload, currentPolicyFile, previousPolicyFile, regulationsFiles);
         navigate(`/drafts/${response.draft_id}`, {
           state: { tocSource: response.toc_source }
         });
+      } else {
+        // Auto-validate description before initializing if not yet checked
+        if (formData.description?.trim() && !descriptionCheck) {
+          setLoading(false);
+          await handleCheckDescription();
+          return;
+        }
+        if (formData.description?.trim() && descriptionCheck && !descriptionCheck.is_valid) {
+          setLoading(false);
+          return;
+        }
+
+        const response = await draftService.createDraft(payload);
+        if (response.needs_policy_selection && response.similar_policies?.length) {
+          setPendingDraftId(response.draft_id);
+          setSimilarPolicies(response.similar_policies);
+        } else {
+          navigate(`/drafts/${response.draft_id}`, {
+            state: { tocSource: response.toc_source }
+          });
+        }
       }
     } catch (err: any) {
       const action = editDraft ? 'update' : 'create';
@@ -169,7 +294,11 @@ const NewDraftPage: React.FC = () => {
       city: formData.client_metadata.city.trim() !== '',
       industry: formData.client_metadata.industry.trim() !== '',
       function: formData.function.trim() !== '',
-      regulations: formData.regulations.trim() !== ''
+      ...(startingPoint === 'upload' && {
+        currentPolicy: currentPolicyFile !== null,
+        previousPolicy: previousPolicyFile !== null,
+        regulations: regulationsFiles.length > 0,
+      }),
     };
 
     // Debug: Log which fields are invalid
@@ -226,6 +355,200 @@ const NewDraftPage: React.FC = () => {
             }}
           >
             <form onSubmit={handleSubmit}>
+              {!editDraft && (
+                <Box sx={{ mb: isCompact ? 2 : 3 }}>
+                  <Typography variant={isCompact ? 'caption' : 'body2'} fontWeight={600} sx={{ mb: 1.5, display: 'block' }}>
+                    Starting Point
+                  </Typography>
+
+                  {/* Option cards */}
+                  <Grid container spacing={isCompact ? 1.5 : 2}>
+                    {/* New Policy card */}
+                    <Grid item xs={6}>
+                      <Box
+                        onClick={() => { setStartingPoint('ai'); setCurrentPolicyFile(null); setPreviousPolicyFile(null); setRegulationsFiles([]); }}
+                        sx={{
+                          cursor: 'pointer',
+                          borderRadius: 2,
+                          p: isCompact ? 1.5 : 2,
+                          border: '2px solid',
+                          borderColor: startingPoint === 'ai' ? '#667eea' : '#e2e8f0',
+                          backgroundColor: startingPoint === 'ai' ? '#f5f3ff' : 'background.paper',
+                          transition: 'all 0.25s ease',
+                          '&:hover': {
+                            borderColor: '#667eea',
+                            backgroundColor: '#f5f3ff',
+                            transform: 'translateY(-2px)',
+                            boxShadow: '0 4px 12px rgba(102,126,234,0.15)',
+                          },
+                        }}
+                      >
+                        <Box display="flex" alignItems="center" gap={1} mb={0.5}>
+                          <AutoAwesome sx={{
+                            fontSize: isCompact ? 18 : 22,
+                            color: startingPoint === 'ai' ? '#667eea' : 'text.secondary',
+                          }} />
+                          <Typography
+                            variant={isCompact ? 'body2' : 'body1'}
+                            fontWeight={600}
+                            color={startingPoint === 'ai' ? '#667eea' : 'text.primary'}
+                          >
+                            New Policy
+                          </Typography>
+                        </Box>
+                        <Typography variant="caption" color="text.secondary" display="block">
+                          AI generates a structured TOC from scratch
+                        </Typography>
+                      </Box>
+                    </Grid>
+
+                    {/* Review Policy card */}
+                    <Grid item xs={6}>
+                      <Box
+                        onClick={() => setStartingPoint('upload')}
+                        sx={{
+                          cursor: 'pointer',
+                          borderRadius: 2,
+                          p: isCompact ? 1.5 : 2,
+                          border: '2px solid',
+                          borderColor: startingPoint === 'upload' ? '#764ba2' : '#e2e8f0',
+                          backgroundColor: startingPoint === 'upload' ? '#faf5ff' : 'background.paper',
+                          transition: 'all 0.25s ease',
+                          '&:hover': {
+                            borderColor: '#764ba2',
+                            backgroundColor: '#faf5ff',
+                            transform: 'translateY(-2px)',
+                            boxShadow: '0 4px 12px rgba(118,75,162,0.15)',
+                          },
+                        }}
+                      >
+                        <Box display="flex" alignItems="center" gap={1} mb={0.5}>
+                          <UploadFile sx={{
+                            fontSize: isCompact ? 18 : 22,
+                            color: startingPoint === 'upload' ? '#764ba2' : 'text.secondary',
+                          }} />
+                          <Typography
+                            variant={isCompact ? 'body2' : 'body1'}
+                            fontWeight={600}
+                            color={startingPoint === 'upload' ? '#764ba2' : 'text.primary'}
+                          >
+                            Review Policy
+                          </Typography>
+                        </Box>
+                        <Typography variant="caption" color="text.secondary" display="block">
+                          Upload existing documents to review & improve
+                        </Typography>
+                      </Box>
+                    </Grid>
+                  </Grid>
+
+                  {/* Upload inputs for Review Policy */}
+                  {startingPoint === 'upload' && (
+                    <Box sx={{ mt: 2 }}>
+                      <Grid container spacing={isCompact ? 1.5 : 2}>
+
+                        {/* Current Client Policy */}
+                        <Grid item xs={12} md={4}>
+                          <input type="file" accept=".docx" ref={currentPolicyRef} style={{ display: 'none' }} onChange={handleCurrentPolicyChange} />
+                          <Box
+                            onClick={() => currentPolicyRef.current?.click()}
+                            sx={{
+                              cursor: 'pointer',
+                              border: '2px dashed',
+                              borderColor: currentPolicyFile ? '#2E7D32' : '#1976D2',
+                              borderRadius: 2,
+                              p: isCompact ? 1.5 : 2,
+                              textAlign: 'center',
+                              background: currentPolicyFile ? '#F1F8E9' : '#E3F2FD',
+                              transition: 'all 0.2s',
+                              '&:hover': { background: currentPolicyFile ? '#DCEDC8' : '#BBDEFB' },
+                            }}
+                          >
+                            <PolicyOutlined sx={{ fontSize: 28, color: currentPolicyFile ? '#2E7D32' : '#1976D2', mb: 0.5 }} />
+                            <Typography variant="caption" fontWeight={600} display="block" color={currentPolicyFile ? '#2E7D32' : '#1976D2'}>
+                              Current Client Policy *
+                            </Typography>
+                            {currentPolicyFile ? (
+                              <Box display="flex" alignItems="center" justifyContent="center" gap={0.5} mt={0.5}>
+                                <CheckCircle sx={{ fontSize: 14, color: '#2E7D32' }} />
+                                <Typography variant="caption" color="#2E7D32" noWrap sx={{ maxWidth: 120 }}>{currentPolicyFile.name}</Typography>
+                              </Box>
+                            ) : (
+                              <Typography variant="caption" color="text.secondary">Click to upload .docx</Typography>
+                            )}
+                          </Box>
+                        </Grid>
+
+                        {/* Previous Policy */}
+                        <Grid item xs={12} md={4}>
+                          <input type="file" accept=".docx" ref={previousPolicyRef} style={{ display: 'none' }} onChange={handlePreviousPolicyChange} />
+                          <Box
+                            onClick={() => previousPolicyRef.current?.click()}
+                            sx={{
+                              cursor: 'pointer',
+                              border: '2px dashed',
+                              borderColor: previousPolicyFile ? '#E65100' : '#9E9E9E',
+                              borderRadius: 2,
+                              p: isCompact ? 1.5 : 2,
+                              textAlign: 'center',
+                              background: previousPolicyFile ? '#FFF3E0' : '#FAFAFA',
+                              transition: 'all 0.2s',
+                              '&:hover': { background: previousPolicyFile ? '#FFE0B2' : '#F5F5F5' },
+                            }}
+                          >
+                            <History sx={{ fontSize: 28, color: previousPolicyFile ? '#E65100' : '#9E9E9E', mb: 0.5 }} />
+                            <Typography variant="caption" fontWeight={600} display="block" color={previousPolicyFile ? '#E65100' : 'text.secondary'}>
+                              Previous Policy *
+                            </Typography>
+                            {previousPolicyFile ? (
+                              <Box display="flex" alignItems="center" justifyContent="center" gap={0.5} mt={0.5}>
+                                <CheckCircle sx={{ fontSize: 14, color: '#E65100' }} />
+                                <Typography variant="caption" color="#E65100" noWrap sx={{ maxWidth: 120 }}>{previousPolicyFile.name}</Typography>
+                              </Box>
+                            ) : (
+                              <Typography variant="caption" color="text.secondary">Click to upload .docx</Typography>
+                            )}
+                          </Box>
+                        </Grid>
+
+                        {/* Current Regulations */}
+                        <Grid item xs={12} md={4}>
+                          <input type="file" multiple ref={regulationsRef} style={{ display: 'none' }} onChange={handleRegulationsChange} />
+                          <Box
+                            onClick={() => regulationsRef.current?.click()}
+                            sx={{
+                              cursor: 'pointer',
+                              border: '2px dashed',
+                              borderColor: regulationsFiles.length > 0 ? '#4A148C' : '#9E9E9E',
+                              borderRadius: 2,
+                              p: isCompact ? 1.5 : 2,
+                              textAlign: 'center',
+                              background: regulationsFiles.length > 0 ? '#F3E5F5' : '#FAFAFA',
+                              transition: 'all 0.2s',
+                              '&:hover': { background: regulationsFiles.length > 0 ? '#E1BEE7' : '#F5F5F5' },
+                            }}
+                          >
+                            <Gavel sx={{ fontSize: 28, color: regulationsFiles.length > 0 ? '#4A148C' : '#9E9E9E', mb: 0.5 }} />
+                            <Typography variant="caption" fontWeight={600} display="block" color={regulationsFiles.length > 0 ? '#4A148C' : 'text.secondary'}>
+                              Current Regulations *
+                            </Typography>
+                            {regulationsFiles.length > 0 ? (
+                              <Box display="flex" alignItems="center" justifyContent="center" gap={0.5} mt={0.5}>
+                                <CheckCircle sx={{ fontSize: 14, color: '#4A148C' }} />
+                                <Typography variant="caption" color="#4A148C">{regulationsFiles.length} file{regulationsFiles.length > 1 ? 's' : ''} selected</Typography>
+                              </Box>
+                            ) : (
+                              <Typography variant="caption" color="text.secondary">Click to upload files</Typography>
+                            )}
+                          </Box>
+                        </Grid>
+
+                      </Grid>
+                    </Box>
+                  )}
+                </Box>
+              )}
+
               <Box sx={{ mb: isCompact ? 1.5 : 2.5 }}>
                 <Box display="flex" alignItems="center" gap={1} mb={isCompact ? 1 : 2}>
                   <EditNote color="primary" sx={{ fontSize: isCompact ? 18 : 20 }} />
@@ -244,12 +567,110 @@ const NewDraftPage: React.FC = () => {
                       value={formData.title}
                       onChange={handleChange('title')}
                       placeholder="Enter a descriptive title for your policy"
-                      helperText={isCompact ? undefined : "This will be the main title of your policy document"}
                       InputProps={{
                         sx: { backgroundColor: 'background.paper' }
                       }}
                     />
                   </Grid>
+
+                  {!editDraft && startingPoint === 'ai' && <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      multiline
+                      size={isCompact ? 'small' : 'medium'}
+                      rows={isCompact ? 2 : 3}
+                      label="Policy Description"
+                      value={formData.description}
+                      onChange={(e) => {
+                        setFormData(prev => ({ ...prev, description: e.target.value }));
+                        setDescriptionCheck(null);
+                      }}
+                      placeholder="Describe the purpose and scope of this policy — used to find similar existing policies"
+                      InputProps={{ sx: { backgroundColor: 'background.paper' } }}
+                      sx={{
+                        '& .MuiOutlinedInput-root': descriptionCheck?.is_valid
+                          ? { '& fieldset': { borderColor: '#4caf50', borderWidth: '2px' } }
+                          : descriptionCheck && !descriptionCheck.is_valid
+                          ? { '& fieldset': { borderColor: '#ff9800', borderWidth: '2px' } }
+                          : {},
+                      }}
+                    />
+
+                    {/* Check button — shown when description has content and not yet checked */}
+                    {!editDraft && startingPoint === 'ai' && formData.description?.trim() && !descriptionCheck && (
+                      <Box display="flex" justifyContent="flex-end" mt={0.75}>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          onClick={handleCheckDescription}
+                          disabled={checkingDescription}
+                          startIcon={checkingDescription
+                            ? <CircularProgress size={13} sx={{ color: '#667eea' }} />
+                            : <CheckCircleOutline sx={{ fontSize: 15 }} />}
+                          sx={{
+                            borderColor: '#667eea',
+                            color: '#667eea',
+                            fontSize: '0.75rem',
+                            textTransform: 'none',
+                            '&:hover': { borderColor: '#764ba2', color: '#764ba2', background: '#f5f3ff' },
+                          }}
+                        >
+                          {checkingDescription ? 'Checking…' : 'Check Description'}
+                        </Button>
+                      </Box>
+                    )}
+
+                    {/* Pass state */}
+                    {descriptionCheck?.is_valid && (
+                      <Box display="flex" alignItems="center" gap={0.5} mt={0.75}>
+                        <CheckCircle sx={{ fontSize: 16, color: '#4caf50' }} />
+                        <Typography variant="caption" sx={{ color: '#4caf50', fontWeight: 600 }}>
+                          Description looks good (score: {descriptionCheck.score}/100)
+                        </Typography>
+                      </Box>
+                    )}
+
+                    {/* Fail state */}
+                    {descriptionCheck && !descriptionCheck.is_valid && (
+                      <Box sx={{
+                        mt: 1,
+                        p: 1.5,
+                        borderRadius: 2,
+                        border: '1px solid #ff9800',
+                        background: '#fffbf0',
+                      }}>
+                        <Box display="flex" alignItems="center" justifyContent="space-between" mb={0.5}>
+                          <Typography variant="caption" fontWeight={700} sx={{ color: '#e65100' }}>
+                            Description needs improvement (score: {descriptionCheck.score}/100)
+                          </Typography>
+                        </Box>
+                        {descriptionCheck.issues.map((issue, i) => (
+                          <Typography key={i} variant="caption" color="text.secondary" display="block" sx={{ mb: 0.25 }}>
+                            • {issue}
+                          </Typography>
+                        ))}
+                        {descriptionCheck.improved_description && (
+                          <Button
+                            size="small"
+                            variant="contained"
+                            onClick={handleImproveDescription}
+                            startIcon={<AutoAwesome sx={{ fontSize: 14 }} />}
+                            sx={{
+                              mt: 1,
+                              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                              color: '#fff',
+                              fontSize: '0.75rem',
+                              textTransform: 'none',
+                              boxShadow: 'none',
+                              '&:hover': { boxShadow: '0 4px 12px rgba(102,126,234,0.35)' },
+                            }}
+                          >
+                            Improve with AI
+                          </Button>
+                        )}
+                      </Box>
+                    )}
+                  </Grid>}
 
                   <Grid item xs={12} md={6}>
                     <FormControl fullWidth required size={isCompact ? 'small' : 'medium'}>
@@ -312,6 +733,7 @@ const NewDraftPage: React.FC = () => {
                         label="Regulations"
                         sx={{ backgroundColor: 'background.paper' }}
                       >
+                        <MenuItem value="None">None</MenuItem>
                         <MenuItem value="UAE Labor Law">UAE Labor Law</MenuItem>
                       </Select>
                     </FormControl>
@@ -497,7 +919,9 @@ const NewDraftPage: React.FC = () => {
             </Typography>
 
             <Typography variant="caption" color="text.secondary" paragraph>
-              After creating your draft, you'll be able to:
+              {startingPoint === 'upload'
+                ? 'After uploading, the tool extracts the TOC and content from your document. You can then:'
+                : 'After creating your draft, you\'ll be able to:'}
             </Typography>
 
             <Box component="ul" sx={{ pl: 2, '& li': { mb: isCompact ? 0.5 : 0.75 } }}>
@@ -518,6 +942,116 @@ const NewDraftPage: React.FC = () => {
 
         </Grid>
       </Grid>
+      {/* Policy selection dialog */}
+      <Dialog
+        open={similarPolicies.length > 0}
+        maxWidth="md"
+        fullWidth
+        disableEscapeKeyDown
+      >
+        <DialogTitle>
+          Similar Policies Found
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            We found {similarPolicies.length} similar {similarPolicies.length === 1 ? 'policy' : 'policies'} in the library.
+            Choose one to use as the starting structure for your draft, or generate a new TOC with AI.
+          </Typography>
+          <Grid container spacing={2}>
+            {similarPolicies.map((policy) => (
+              <Grid item xs={12} key={policy.policy_id}>
+                <Card variant="outlined">
+                  <CardContent sx={{ pb: 1 }}>
+                    <Box display="flex" alignItems="center" gap={1} mb={0.75} flexWrap="wrap">
+                      <Article sx={{ color: '#667eea', fontSize: 18 }} />
+                      <Typography variant="subtitle2" fontWeight={600}>
+                        {policy.filename}
+                      </Typography>
+                      {policy.web_url && (
+                        <Typography
+                          component="a"
+                          href={policy.web_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          variant="caption"
+                          sx={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 0.25,
+                            px: 0.9,
+                            py: 0.15,
+                            borderRadius: '999px',
+                            backgroundColor: '#f5f3ff',
+                            border: '1px solid #ddd6fe',
+                            color: '#667eea',
+                            fontWeight: 600,
+                            lineHeight: 1.6,
+                            textDecoration: 'none',
+                            transition: 'all 0.2s ease',
+                            '&:hover': {
+                              backgroundColor: '#667eea',
+                              borderColor: '#667eea',
+                              color: '#fff',
+                            },
+                          }}
+                        >
+                          SharePoint ↗
+                        </Typography>
+                      )}
+                      <Chip
+                        label={`${Math.round(policy.similarity_score * 100)}% match`}
+                        size="small"
+                        color="success"
+                        variant="outlined"
+                        sx={{ ml: 'auto' }}
+                      />
+                    </Box>
+                    <Typography variant="body2" color="text.secondary" sx={{
+                      display: '-webkit-box',
+                      WebkitLineClamp: 3,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden',
+                    }}>
+                      {policy.description}
+                    </Typography>
+                  </CardContent>
+                  <CardActions sx={{ pt: 0 }}>
+                    <Button
+                      size="small"
+                      variant="contained"
+                      disabled={applyingId !== null}
+                      onClick={() => handleApplyPolicy(policy.policy_id)}
+                    >
+                      {applyingId === policy.policy_id ? <CircularProgress size={16} /> : 'Use this policy'}
+                    </Button>
+                  </CardActions>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            variant="contained"
+            startIcon={applyingId === '__ai__' ? <CircularProgress size={16} color="inherit" /> : <AutoAwesome />}
+            disabled={applyingId !== null}
+            onClick={() => handleApplyPolicy(null)}
+            sx={{
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              color: '#fff',
+              textTransform: 'none',
+              fontWeight: 600,
+              px: 2.5,
+              boxShadow: 'none',
+              '&:hover': { boxShadow: '0 6px 16px rgba(102,126,234,0.35)' },
+              '&.Mui-disabled': { background: '#c7c7d9', color: '#fff' },
+            }}
+          >
+            {applyingId === '__ai__' ? 'Generating...' : 'Generate with AI instead'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 };

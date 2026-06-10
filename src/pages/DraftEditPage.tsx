@@ -49,6 +49,7 @@ import {
   Send,
   AutoAwesome,
   Source,
+  LibraryBooks,
 } from '@mui/icons-material';
 import {
   DndContext,
@@ -2897,7 +2898,7 @@ const DraftEditPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [tabValue, setTabValue] = useState(0);
   // Get TOC source from draft metadata (persistent) or navigation state (temporary for new drafts)
-  const [tocSource, setTocSource] = useState<'similarity_search' | 'ai_generated' | null>(
+  const [tocSource, setTocSource] = useState<'similarity_search' | 'similar_policy' | 'ai_generated' | 'uploaded_policy' | null>(
     location.state?.tocSource || null
   );
 
@@ -2975,7 +2976,7 @@ const DraftEditPage: React.FC = () => {
       setHasUnsavedChanges(false);
       // Load TOC source from draft metadata
       if (data.metadata?.toc_source) {
-        setTocSource(data.metadata.toc_source as 'similarity_search' | 'ai_generated');
+        setTocSource(data.metadata.toc_source as 'similarity_search' | 'similar_policy' | 'ai_generated' | 'uploaded_policy');
       }
       // Load TOC chat history if available
       if (data.toc_chat_history && data.toc_chat_history.length > 0) {
@@ -4118,8 +4119,8 @@ const DraftEditPage: React.FC = () => {
                     </Box>
                   </Tooltip>
                 )}
-                {tocSource === 'similarity_search' && (
-                  <Tooltip title="This table of contents is based on similar existing policies">
+                {(tocSource === 'similar_policy' || tocSource === 'similarity_search') && (
+                  <Tooltip title="This table of contents is adapted from a similar existing policy in the library">
                     <Box
                       sx={{
                         display: 'flex',
@@ -4128,13 +4129,13 @@ const DraftEditPage: React.FC = () => {
                         px: 1,
                         py: 0.3,
                         borderRadius: 1.5,
-                        background: '#10b981',
+                        background: 'linear-gradient(135deg, #764ba2 0%, #b06ab3 100%)',
                         color: 'white',
                       }}
                     >
-                      <Source sx={{ fontSize: 13 }} />
+                      <LibraryBooks sx={{ fontSize: 13 }} />
                       <Typography sx={{ fontSize: '0.7rem', fontWeight: 600 }}>
-                        Template Based
+                        Similar Policy
                       </Typography>
                     </Box>
                   </Tooltip>
@@ -4161,6 +4162,8 @@ const DraftEditPage: React.FC = () => {
             <Typography variant="caption" sx={{ color: '#64748b', mb: 2, mt: 1.5, display: 'block' }}>
               {tocSource === 'ai_generated'
                 ? 'AI has suggested this structure based on your policy description. You can customize it as needed.'
+                : (tocSource === 'similar_policy' || tocSource === 'similarity_search')
+                ? 'This structure is adapted from a similar existing policy in the library. You can customize it as needed.'
                 : 'Organize your policy document structure. Click and drag to reorder, edit titles, or delete sections as needed.'}
             </Typography>
 

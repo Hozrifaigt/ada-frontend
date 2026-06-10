@@ -97,10 +97,20 @@ export interface ValidateDraftResponse {
   improved_description?: string;
 }
 
+export interface SimilarPolicy {
+  policy_id: string;
+  filename: string;
+  description: string;
+  web_url?: string;
+  similarity_score: number;
+}
+
 export interface CreateDraftResponse {
   draft_id: string;
   draft: Draft;
-  toc_source?: 'similarity_search' | 'ai_generated';
+  toc_source?: 'similarity_search' | 'ai_generated' | 'pending_selection';
+  needs_policy_selection?: boolean;
+  similar_policies?: SimilarPolicy[];
 }
 
 export interface UpdateTOCRequest {
@@ -128,6 +138,14 @@ export interface ContentGenerationResponse {
   word_count: number;
   message: string;
   is_chat_response?: boolean;
+}
+
+export interface ValidateDraftResponse {
+  is_valid: boolean;
+  issues: string[];
+  suggestions: string[];
+  description_quality_score: number;
+  improved_description?: string;
 }
 
 export interface DraftProgress {

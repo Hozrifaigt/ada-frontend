@@ -9,6 +9,7 @@ import {
   GenerateContentRequest,
   ContentGenerationResponse,
   DraftProgress,
+  ValidateDraftResponse,
   TOCTopic,
   TOCChatResponse,
   TOCOperation,
@@ -69,7 +70,7 @@ longTimeoutClient.interceptors.response.use(
 );
 
 export const draftService = {
-  async validateDraft(data: CreateDraftRequest): Promise<import('../types/draft.types').ValidateDraftResponse> {
+  async validateDraft(data: CreateDraftRequest): Promise<ValidateDraftResponse> {
     const response = await apiClient.post('/api/v1/drafts/validate', data);
     return response.data;
   },
@@ -77,6 +78,38 @@ export const draftService = {
   async createDraft(data: CreateDraftRequest): Promise<CreateDraftResponse> {
     const response = await longTimeoutClient.post('/api/v1/drafts/initialize', data);
     return response.data;
+  },
+
+  async createDraftFromUpload(
+    data: CreateDraftRequest,
+    currentPolicyFile: File,
+    previousPolicyFile?: File | null,
+    regulationsFiles?: File[]
+  ): Promise<CreateDraftResponse> {
+    const formData = new FormData();
+    formData.append('title', data.title);
+    formData.append('function', data.function);
+    formData.append('client_name', data.client_metadata.name);
+    formData.append('client_country', data.client_metadata.country);
+    formData.append('client_city', data.client_metadata.city);
+    formData.append('client_industry', data.client_metadata.industry);
+    if (data.client_specific_requests) formData.append('client_specific_requests', data.client_specific_requests);
+    if (data.sector_specific_comments) formData.append('sector_specific_comments', data.sector_specific_comments);
+    formData.append('regulations', data.regulations || '');
+    formData.append('detail_level', String(data.detail_level ?? 3));
+    formData.append('policy_file', currentPolicyFile);
+    if (previousPolicyFile) formData.append('previous_policy_file', previousPolicyFile);
+    if (regulationsFiles?.length) {
+      regulationsFiles.forEach(f => formData.append('regulations_files', f));
+    }
+    const response = await longTimeoutClient.post('/api/v1/drafts/initialize-from-upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+
+  async applyPolicy(draftId: string, policyId: string | null): Promise<void> {
+    await longTimeoutClient.post(`/api/v1/drafts/${draftId}/apply-policy`, { policy_id: policyId });
   },
 
   async getDrafts(filters?: {
