@@ -80,11 +80,21 @@ export const draftService = {
     return response.data;
   },
 
+  async listLibraryPolicies(functionFilter?: string): Promise<import('../types/draft.types').LibraryPolicy[]> {
+    const response = await apiClient.get('/api/v1/drafts/library-policies', {
+      params: functionFilter ? { function: functionFilter } : undefined,
+    });
+    return response.data.policies || [];
+  },
+
   async createDraftFromUpload(
     data: CreateDraftRequest,
     currentPolicyFile: File,
     previousPolicyFile?: File | null,
-    regulationsFiles?: File[]
+    regulationsFiles?: File[],
+    benchmarkFile?: File | null,
+    benchmarkPolicyId?: string | null,
+    reviewIntensity?: 'preserve' | 'rebuild'
   ): Promise<CreateDraftResponse> {
     const formData = new FormData();
     formData.append('title', data.title);
@@ -102,6 +112,9 @@ export const draftService = {
     if (regulationsFiles?.length) {
       regulationsFiles.forEach(f => formData.append('regulations_files', f));
     }
+    if (benchmarkFile) formData.append('benchmark_file', benchmarkFile);
+    if (benchmarkPolicyId) formData.append('benchmark_policy_id', benchmarkPolicyId);
+    formData.append('review_intensity', reviewIntensity || 'preserve');
     const response = await longTimeoutClient.post('/api/v1/drafts/initialize-from-upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
@@ -110,6 +123,86 @@ export const draftService = {
 
   async applyPolicy(draftId: string, policyId: string | null): Promise<void> {
     await longTimeoutClient.post(`/api/v1/drafts/${draftId}/apply-policy`, { policy_id: policyId });
+  },
+
+  async generateGapReport(draftId: string, topicId: string, subtopicId?: string): Promise<import('../types/draft.types').GapReportResponse> {
+    const qs = subtopicId ? `?subtopic_id=${encodeURIComponent(subtopicId)}` : '';
+    const response = await longTimeoutClient.post(`/api/v1/drafts/${draftId}/topics/${topicId}/gap-report${qs}`, {});
+    return response.data;
+  },
+
+  // Assess several units in one request (server runs them in parallel).
+  async assessBatch(
+    draftId: string,
+    units: { topic_id: string; subtopic_id?: string }[]
+  ): Promise<{ results: { topic_id: string; subtopic_id: string | null; gap_report: import('../types/draft.types').GapReport }[] }> {
+    const response = await longTimeoutClient.post(`/api/v1/drafts/${draftId}/assess-batch`, { units });
+    return response.data;
+  },
+
+  async applyGap(
+    draftId: string,
+    topicId: string,
+    body: import('../types/draft.types').ApplyGapRequest
+  ): Promise<import('../types/draft.types').ApplyGapResponse> {
+    const response = await longTimeoutClient.post(`/api/v1/drafts/${draftId}/topics/${topicId}/apply-gap`, body);
+    return response.data;
+  },
+
+  // Preview step: generate the proposed rewrite without persisting it.
+  async previewGap(
+    draftId: string,
+    topicId: string,
+    body: import('../types/draft.types').ApplyGapRequest
+  ): Promise<import('../types/draft.types').ApplyGapResponse> {
+    return this.applyGap(draftId, topicId, { ...body, preview: true });
+  },
+
+  // Confirm step: commit the reviewer-approved (possibly edited) content.
+  async confirmGap(
+    draftId: string,
+    topicId: string,
+    finalContent: string,
+    subtopicId?: string
+  ): Promise<import('../types/draft.types').ApplyGapResponse> {
+    return this.applyGap(draftId, topicId, { confirmed_finding_ids: [], final_content: finalContent, subtopic_id: subtopicId });
+  },
+
+  // ===== Version history & audit =====
+  async saveVersion(draftId: string, label?: string, reason?: string): Promise<{ version_id: string }> {
+    const response = await longTimeoutClient.post(`/api/v1/drafts/${draftId}/versions`, { label, reason });
+    return response.data;
+  },
+
+  async listVersions(draftId: string): Promise<import('../types/draft.types').DraftVersion[]> {
+    const response = await longTimeoutClient.get(`/api/v1/drafts/${draftId}/versions`);
+    return response.data;
+  },
+
+  async restoreVersion(draftId: string, versionId: string): Promise<void> {
+    await longTimeoutClient.post(`/api/v1/drafts/${draftId}/versions/${versionId}/restore`, {});
+  },
+
+  async listAudit(draftId: string): Promise<import('../types/draft.types').AuditEntry[]> {
+    const response = await longTimeoutClient.get(`/api/v1/drafts/${draftId}/audit`);
+    return response.data;
+  },
+
+  // ===== Gap summary report =====
+  async getGapSummary(draftId: string): Promise<import('../types/draft.types').GapSummary> {
+    const response = await longTimeoutClient.get(`/api/v1/drafts/${draftId}/gap-summary`);
+    return response.data;
+  },
+
+  async exportGapSummary(draftId: string): Promise<Blob> {
+    const response = await longTimeoutClient.post(`/api/v1/drafts/${draftId}/export/gap-summary/word`, {}, { responseType: 'blob' });
+    return response.data;
+  },
+
+  // ===== Whole-policy consistency pass =====
+  async runConsistencyCheck(draftId: string): Promise<import('../types/draft.types').ConsistencyReport> {
+    const response = await longTimeoutClient.post(`/api/v1/drafts/${draftId}/consistency-check`, {});
+    return response.data;
   },
 
   async getDrafts(filters?: {

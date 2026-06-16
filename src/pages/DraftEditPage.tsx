@@ -50,6 +50,8 @@ import {
   AutoAwesome,
   Source,
   LibraryBooks,
+  History,
+  Rule,
 } from '@mui/icons-material';
 import {
   DndContext,
@@ -72,6 +74,9 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { draftService } from '../services/draftService';
 import { Draft, ConversationEntry, GenerateContentRequest, ContentGenerationResponse } from '../types/draft.types';
+import GapReviewPanel from '../components/GapReviewPanel';
+import HistoryPanel from '../components/HistoryPanel';
+import ConsistencyPanel from '../components/ConsistencyPanel';
 
 // Extended conversation entry to store full content
 interface ExtendedConversationEntry extends ConversationEntry {
@@ -2592,6 +2597,11 @@ function ExportReviewPanel({ draft, currentToc }: ExportReviewPanelProps) {
                   '&:hover': {
                     background: 'linear-gradient(135deg, #059669 0%, #064e3b 100%)',
                   },
+                  '&.Mui-disabled': {
+                    color: 'rgba(255,255,255,0.8)',
+                    background: 'linear-gradient(135deg, #10b981 0%, #065f46 100%)',
+                    opacity: 0.7,
+                  },
                 }}
               >
                 {isExporting ? 'Exporting...' : `Export as ${selectedExportFormat.toUpperCase()}`}
@@ -2977,6 +2987,10 @@ const DraftEditPage: React.FC = () => {
       // Load TOC source from draft metadata
       if (data.metadata?.toc_source) {
         setTocSource(data.metadata.toc_source as 'similarity_search' | 'similar_policy' | 'ai_generated' | 'uploaded_policy');
+      }
+      // Land review drafts on the Gap Review tab (index 4)
+      if (data.metadata?.review_mode) {
+        setTabValue(4);
       }
       // Load TOC chat history if available
       if (data.toc_chat_history && data.toc_chat_history.length > 0) {
@@ -3452,6 +3466,8 @@ const DraftEditPage: React.FC = () => {
     setTabValue(newValue);
   };
 
+  const [consistencyOpen, setConsistencyOpen] = useState(false);
+
   // Utility function to check if TOC has changes
   const checkForChanges = (newToc: Draft['toc']) => {
     const hasChanges = JSON.stringify(originalToc) !== JSON.stringify(newToc);
@@ -3811,6 +3827,18 @@ const DraftEditPage: React.FC = () => {
             iconPosition="start"
             label="Export & Preview"
           />
+          {draft.metadata.review_mode && (
+            <Tab
+              icon={<Source />}
+              iconPosition="start"
+              label="Gap Review"
+            />
+          )}
+          <Tab
+            icon={<History />}
+            iconPosition="start"
+            label="History"
+          />
         </Tabs>
       </Paper>
 
@@ -3820,26 +3848,37 @@ const DraftEditPage: React.FC = () => {
             <Typography variant="body1" fontWeight={600} sx={{ color: '#1a202c' }}>
               Draft Overview
             </Typography>
-            <Button
-              variant="contained"
-              size="small"
-              startIcon={<Edit sx={{ fontSize: 14 }} />}
-              onClick={() => navigate('/drafts/new', { state: { editDraft: draft } })}
-              sx={{
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                textTransform: 'none',
-                px: 1.5,
-                py: 0.5,
-                fontWeight: 600,
-                fontSize: '0.7rem',
-                minHeight: 0,
-                '&:hover': {
-                  background: 'linear-gradient(135deg, #5569d8 0%, #6a4291 100%)',
-                },
-              }}
-            >
-              Edit Metadata
-            </Button>
+            <Box display="flex" gap={1}>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<Rule sx={{ fontSize: 14 }} />}
+                onClick={() => setConsistencyOpen(true)}
+                sx={{ textTransform: 'none', px: 1.5, py: 0.5, fontWeight: 600, fontSize: '0.7rem', minHeight: 0, borderColor: '#667eea', color: '#667eea' }}
+              >
+                Consistency check
+              </Button>
+              <Button
+                variant="contained"
+                size="small"
+                startIcon={<Edit sx={{ fontSize: 14 }} />}
+                onClick={() => navigate('/drafts/new', { state: { editDraft: draft } })}
+                sx={{
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  textTransform: 'none',
+                  px: 1.5,
+                  py: 0.5,
+                  fontWeight: 600,
+                  fontSize: '0.7rem',
+                  minHeight: 0,
+                  '&:hover': {
+                    background: 'linear-gradient(135deg, #5569d8 0%, #6a4291 100%)',
+                  },
+                }}
+              >
+                Edit Metadata
+              </Button>
+            </Box>
           </Box>
 
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
@@ -4573,6 +4612,72 @@ const DraftEditPage: React.FC = () => {
       <TabPanel value={tabValue} index={3}>
         <ExportReviewPanel draft={draft} currentToc={currentToc} />
       </TabPanel>
+
+      {draft.metadata.review_mode && (
+        <TabPanel value={tabValue} index={4}>
+          {draft.metadata.toc_reconciliation_note && (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              {draft.metadata.toc_reconciliation_note}
+            </Alert>
+          )}
+          <GapReviewPanel
+            draftId={draft.id}
+            toc={currentToc}
+            onContentApplied={(topicId, subtopicId, content) => {
+              setCurrentToc(prev => prev.map(t => {
+                if (t.topic_id !== topicId) return t;
+                if (subtopicId) {
+                  return {
+                    ...t,
+                    subtopics: t.subtopics.map(s =>
+                      s.subtopic_id === subtopicId
+                        ? { ...s, content, gap_status: 'applied' as const }
+                        : s
+                    ),
+                  };
+                }
+                return { ...t, content, gap_status: 'applied' as const };
+              }));
+              // The Content Generation tab renders from centralized state (keyed by item id),
+              // not from currentToc — mirror a normal save so it doesn't show stale content.
+              const itemId = subtopicId || topicId;
+              updateGeneratedContent(itemId, content);
+              updateCurrentContent(itemId, content);
+              markContentAsSaved(itemId);
+              if (centralizedState.selectedItem?.id === itemId) {
+                updateSelectedItem({ ...centralizedState.selectedItem, content });
+              }
+            }}
+            onReportGenerated={(topicId, subtopicId, report) => {
+              setCurrentToc(prev => prev.map(t => {
+                if (t.topic_id !== topicId) return t;
+                if (subtopicId) {
+                  return {
+                    ...t,
+                    subtopics: t.subtopics.map(s =>
+                      s.subtopic_id === subtopicId
+                        ? { ...s, gap_report_json: JSON.stringify(report), gap_status: 'assessed' as const }
+                        : s
+                    ),
+                  };
+                }
+                return { ...t, gap_report_json: JSON.stringify(report), gap_status: 'assessed' as const };
+              }));
+            }}
+          />
+        </TabPanel>
+      )}
+
+      <TabPanel value={tabValue} index={draft.metadata.review_mode ? 5 : 4}>
+        <HistoryPanel draftId={draft.id} onRestored={() => window.location.reload()} />
+      </TabPanel>
+
+      <ConsistencyPanel
+        draftId={draft.id}
+        open={consistencyOpen}
+        onClose={() => setConsistencyOpen(false)}
+        initialReportJson={draft.metadata.consistency_report_json}
+      />
 
       {/* Professional Success Notification */}
       <Snackbar

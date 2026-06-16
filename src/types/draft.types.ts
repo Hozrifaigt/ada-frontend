@@ -19,6 +19,9 @@ export interface TOCSubtopic {
   content: string;
   summary: string;
   conversation_history: ConversationEntry[];
+  gap_report_json?: string | null;
+  gap_status?: 'pending' | 'assessed' | 'applied';
+  benchmark_match?: string | null;
 }
 
 export interface TOCTopic {
@@ -30,6 +33,11 @@ export interface TOCTopic {
   summary: string;
   conversation_history: ConversationEntry[];
   subtopics: TOCSubtopic[];
+  gap_report_json?: string | null;
+  gap_status?: 'pending' | 'assessed' | 'applied';
+  added_from_benchmark?: boolean;
+  benchmark_match?: string | null;
+  reconcile_note?: string | null;
 }
 
 export interface DraftMetadata {
@@ -41,11 +49,99 @@ export interface DraftMetadata {
   client_metadata: ClientMetadata;
   function: string;
   most_similar_policy_id?: string;
-  toc_source?: 'ai_generated';
+  toc_source?: 'ai_generated' | 'similar_policy' | 'uploaded_policy' | 'pending_selection' | 'similarity_search';
   client_specific_requests?: string;
   sector_specific_comments?: string;
   regulations?: string;
   detail_level?: number;
+  review_mode?: boolean;
+  benchmark_policy_id?: string;
+  benchmark_source?: 'library' | 'uploaded';
+  review_intensity?: 'preserve' | 'rebuild';
+  toc_reconciliation_note?: string | null;
+  consistency_report_json?: string | null;
+}
+
+export interface LibraryPolicy {
+  policy_id: string;
+  filename: string;
+  description: string;
+  function: string;
+  web_url?: string;
+}
+
+export interface GapFinding {
+  id: string;
+  type: 'missing' | 'non_compliant' | 'enhancement';
+  source: 'benchmark' | 'regulation' | 'previous';
+  severity: 'high' | 'medium' | 'low';
+  description: string;
+  suggested_change: string;
+}
+
+export interface GapReport {
+  topic_id: string;
+  findings: GapFinding[];
+  benchmark_topic_matched?: string | null;
+  overall_summary: string;
+}
+
+export interface GapReportResponse {
+  gap_report: GapReport;
+  message: string;
+}
+
+export interface ApplyGapRequest {
+  confirmed_finding_ids: string[];
+  edited_findings?: GapFinding[];
+  preview?: boolean;
+  final_content?: string;
+  subtopic_id?: string;
+}
+
+export interface ApplyGapResponse {
+  content: string;
+  summary: string;
+  word_count: number;
+  message: string;
+}
+
+export interface ConsistencyIssue {
+  id: string;
+  type: 'contradiction' | 'terminology' | 'duplicate' | 'undefined_term' | 'cross_reference' | string;
+  severity: 'high' | 'medium' | 'low' | string;
+  description: string;
+  locations: string[];
+  suggestion: string;
+}
+
+export interface ConsistencyReport {
+  issues: ConsistencyIssue[];
+  summary: string;
+  generated_at: string;
+}
+
+export interface GapSummaryTopic {
+  title: string;
+  status: string;
+  findings_count: number;
+  overall_summary: string;
+  findings: GapFinding[];
+}
+
+export interface GapSummary {
+  narrative: string;
+  total_units: number;
+  assessed: number;
+  applied: number;
+  pending: number;
+  benchmark_coverage: number;
+  pct_preserved: number | null;
+  total_findings: number;
+  by_severity: Record<string, number>;
+  by_type: Record<string, number>;
+  by_source: Record<string, number>;
+  topics: GapSummaryTopic[];
 }
 
 export interface Draft {
@@ -53,6 +149,24 @@ export interface Draft {
   metadata: DraftMetadata;
   toc: TOCTopic[];
   toc_chat_history?: Array<{ timestamp: string; user_message: string; ai_response: string }>;
+}
+
+export interface DraftVersion {
+  version_id: string;
+  created_at: string;
+  created_by: string;
+  label: string;
+  reason: string;
+  size: number;
+}
+
+export interface AuditEntry {
+  ts: string;
+  actor: string;
+  action: string;
+  target_id: string;
+  target_title: string;
+  summary: string;
 }
 
 export interface DraftSummary {

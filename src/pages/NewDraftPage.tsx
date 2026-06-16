@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Box,
   Paper,
@@ -24,6 +24,11 @@ import {
   CardContent,
   CardActions,
   Chip,
+  Switch,
+  FormControlLabel,
+  Autocomplete,
+  ToggleButton,
+  ToggleButtonGroup,
   useMediaQuery,
   useTheme,
 } from '@mui/material';
@@ -38,11 +43,10 @@ import {
   UploadFile,
   Article,
   Gavel,
-  History,
   PolicyOutlined,
   CheckCircle,
 } from '@mui/icons-material';
-import { SimilarPolicy } from '../types/draft.types';
+import { SimilarPolicy, LibraryPolicy } from '../types/draft.types';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Country, State } from 'country-state-city';
 import { draftService } from '../services/draftService';
@@ -77,11 +81,16 @@ const NewDraftPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [startingPoint, setStartingPoint] = useState<'ai' | 'upload'>('ai');
   const [currentPolicyFile, setCurrentPolicyFile] = useState<File | null>(null);
-  const [previousPolicyFile, setPreviousPolicyFile] = useState<File | null>(null);
   const [regulationsFiles, setRegulationsFiles] = useState<File[]>([]);
+  const [benchmarkMode, setBenchmarkMode] = useState<'upload' | 'browse'>('upload');
+  const [benchmarkFile, setBenchmarkFile] = useState<File | null>(null);
+  const [benchmarkPolicyId, setBenchmarkPolicyId] = useState<string | null>(null);
+  const [reviewIntensity, setReviewIntensity] = useState<'preserve' | 'rebuild'>('preserve');
+  const [libraryPolicies, setLibraryPolicies] = useState<LibraryPolicy[]>([]);
+  const [loadingLibrary, setLoadingLibrary] = useState(false);
   const currentPolicyRef = useRef<HTMLInputElement>(null);
-  const previousPolicyRef = useRef<HTMLInputElement>(null);
   const regulationsRef = useRef<HTMLInputElement>(null);
+  const benchmarkRef = useRef<HTMLInputElement>(null);
   const [pendingDraftId, setPendingDraftId] = useState<string | null>(null);
   const [similarPolicies, setSimilarPolicies] = useState<SimilarPolicy[]>([]);
   const [descriptionCheck, setDescriptionCheck] = useState<{
@@ -143,6 +152,18 @@ const NewDraftPage: React.FC = () => {
     }
   };
 
+  // Regulations only apply to HR (UAE Labor Law). For any other function, force "None"
+  // immediately; restore the HR default when switching back.
+  const handleFunctionChange = (value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      function: value,
+      regulations: value === 'HR'
+        ? (prev.regulations === 'None' ? 'UAE Labor Law' : prev.regulations)
+        : 'None',
+    }));
+  };
+
   const handleCountryChange = (countryIsoCode: string) => {
     const country = countries.find(c => c.isoCode === countryIsoCode);
     if (country) {
@@ -178,15 +199,26 @@ const NewDraftPage: React.FC = () => {
     }
   };
 
-  const handlePreviousPolicyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleBenchmarkChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
     if (file && !file.name.endsWith('.docx')) {
-      setError('Previous Policy must be a .docx file.');
+      setError('Benchmark policy must be a .docx file.');
     } else {
       setError(null);
-      setPreviousPolicyFile(file);
+      setBenchmarkFile(file);
     }
   };
+
+  // Load library policies for the benchmark picker when "Browse library" is active
+  useEffect(() => {
+    if (startingPoint === 'upload' && benchmarkMode === 'browse') {
+      setLoadingLibrary(true);
+      draftService.listLibraryPolicies(formData.function)
+        .then(setLibraryPolicies)
+        .catch(() => setLibraryPolicies([]))
+        .finally(() => setLoadingLibrary(false));
+    }
+  }, [startingPoint, benchmarkMode, formData.function]);
 
   const handleRegulationsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -251,7 +283,15 @@ const NewDraftPage: React.FC = () => {
         await draftService.updateDraftMetadata(editDraft.id, payload);
         navigate(`/drafts/${editDraft.id}`);
       } else if (startingPoint === 'upload' && currentPolicyFile) {
-        const response = await draftService.createDraftFromUpload(payload, currentPolicyFile, previousPolicyFile, regulationsFiles);
+        const response = await draftService.createDraftFromUpload(
+          payload,
+          currentPolicyFile,
+          null,
+          regulationsFiles,
+          benchmarkMode === 'upload' ? benchmarkFile : null,
+          benchmarkMode === 'browse' ? benchmarkPolicyId : null,
+          reviewIntensity
+        );
         navigate(`/drafts/${response.draft_id}`, {
           state: { tocSource: response.toc_source }
         });
@@ -296,8 +336,7 @@ const NewDraftPage: React.FC = () => {
       function: formData.function.trim() !== '',
       ...(startingPoint === 'upload' && {
         currentPolicy: currentPolicyFile !== null,
-        previousPolicy: previousPolicyFile !== null,
-        regulations: regulationsFiles.length > 0,
+        benchmark: benchmarkMode === 'upload' ? benchmarkFile !== null : benchmarkPolicyId !== null,
       }),
     };
 
@@ -366,7 +405,7 @@ const NewDraftPage: React.FC = () => {
                     {/* New Policy card */}
                     <Grid item xs={6}>
                       <Box
-                        onClick={() => { setStartingPoint('ai'); setCurrentPolicyFile(null); setPreviousPolicyFile(null); setRegulationsFiles([]); }}
+                        onClick={() => { setStartingPoint('ai'); setCurrentPolicyFile(null); setRegulationsFiles([]); setBenchmarkFile(null); setBenchmarkPolicyId(null); }}
                         sx={{
                           cursor: 'pointer',
                           borderRadius: 2,
@@ -445,10 +484,24 @@ const NewDraftPage: React.FC = () => {
                   {/* Upload inputs for Review Policy */}
                   {startingPoint === 'upload' && (
                     <Box sx={{ mt: 2 }}>
-                      <Grid container spacing={isCompact ? 1.5 : 2}>
+                      {/* Function first — it scopes which library policies you can browse for the benchmark */}
+                      <FormControl fullWidth required size="small" sx={{ mb: 2 }}>
+                        <InputLabel>Function</InputLabel>
+                        <Select
+                          value={formData.function}
+                          onChange={(e) => { handleFunctionChange(e.target.value); setBenchmarkPolicyId(null); }}
+                          label="Function"
+                          sx={{ backgroundColor: 'background.paper' }}
+                        >
+                          {functions.map((func) => (
+                            <MenuItem key={func} value={func}>{func}</MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
 
+                      <Grid container spacing={isCompact ? 1.5 : 2}>
                         {/* Current Client Policy */}
-                        <Grid item xs={12} md={4}>
+                        <Grid item xs={12} md={6}>
                           <input type="file" accept=".docx" ref={currentPolicyRef} style={{ display: 'none' }} onChange={handleCurrentPolicyChange} />
                           <Box
                             onClick={() => currentPolicyRef.current?.click()}
@@ -471,7 +524,7 @@ const NewDraftPage: React.FC = () => {
                             {currentPolicyFile ? (
                               <Box display="flex" alignItems="center" justifyContent="center" gap={0.5} mt={0.5}>
                                 <CheckCircle sx={{ fontSize: 14, color: '#2E7D32' }} />
-                                <Typography variant="caption" color="#2E7D32" noWrap sx={{ maxWidth: 120 }}>{currentPolicyFile.name}</Typography>
+                                <Typography variant="caption" color="#2E7D32" noWrap sx={{ maxWidth: 180 }}>{currentPolicyFile.name}</Typography>
                               </Box>
                             ) : (
                               <Typography variant="caption" color="text.secondary">Click to upload .docx</Typography>
@@ -479,40 +532,8 @@ const NewDraftPage: React.FC = () => {
                           </Box>
                         </Grid>
 
-                        {/* Previous Policy */}
-                        <Grid item xs={12} md={4}>
-                          <input type="file" accept=".docx" ref={previousPolicyRef} style={{ display: 'none' }} onChange={handlePreviousPolicyChange} />
-                          <Box
-                            onClick={() => previousPolicyRef.current?.click()}
-                            sx={{
-                              cursor: 'pointer',
-                              border: '2px dashed',
-                              borderColor: previousPolicyFile ? '#E65100' : '#9E9E9E',
-                              borderRadius: 2,
-                              p: isCompact ? 1.5 : 2,
-                              textAlign: 'center',
-                              background: previousPolicyFile ? '#FFF3E0' : '#FAFAFA',
-                              transition: 'all 0.2s',
-                              '&:hover': { background: previousPolicyFile ? '#FFE0B2' : '#F5F5F5' },
-                            }}
-                          >
-                            <History sx={{ fontSize: 28, color: previousPolicyFile ? '#E65100' : '#9E9E9E', mb: 0.5 }} />
-                            <Typography variant="caption" fontWeight={600} display="block" color={previousPolicyFile ? '#E65100' : 'text.secondary'}>
-                              Previous Policy *
-                            </Typography>
-                            {previousPolicyFile ? (
-                              <Box display="flex" alignItems="center" justifyContent="center" gap={0.5} mt={0.5}>
-                                <CheckCircle sx={{ fontSize: 14, color: '#E65100' }} />
-                                <Typography variant="caption" color="#E65100" noWrap sx={{ maxWidth: 120 }}>{previousPolicyFile.name}</Typography>
-                              </Box>
-                            ) : (
-                              <Typography variant="caption" color="text.secondary">Click to upload .docx</Typography>
-                            )}
-                          </Box>
-                        </Grid>
-
-                        {/* Current Regulations */}
-                        <Grid item xs={12} md={4}>
+                        {/* Current Regulations (optional) */}
+                        <Grid item xs={12} md={6}>
                           <input type="file" multiple ref={regulationsRef} style={{ display: 'none' }} onChange={handleRegulationsChange} />
                           <Box
                             onClick={() => regulationsRef.current?.click()}
@@ -530,7 +551,7 @@ const NewDraftPage: React.FC = () => {
                           >
                             <Gavel sx={{ fontSize: 28, color: regulationsFiles.length > 0 ? '#4A148C' : '#9E9E9E', mb: 0.5 }} />
                             <Typography variant="caption" fontWeight={600} display="block" color={regulationsFiles.length > 0 ? '#4A148C' : 'text.secondary'}>
-                              Current Regulations *
+                              Current Regulations (optional)
                             </Typography>
                             {regulationsFiles.length > 0 ? (
                               <Box display="flex" alignItems="center" justifyContent="center" gap={0.5} mt={0.5}>
@@ -542,8 +563,134 @@ const NewDraftPage: React.FC = () => {
                             )}
                           </Box>
                         </Grid>
-
                       </Grid>
+
+                      {/* Benchmark Policy — full-width card */}
+                      <Box sx={{ mt: 2, p: isCompact ? 1.5 : 2, border: '1px solid #e2e8f0', borderRadius: 2, background: '#fafbff' }}>
+                        <Box mb={1}>
+                          <Typography variant="caption" fontWeight={600} display="block">Benchmark Policy *</Typography>
+                          <Typography variant="caption" color="text.secondary">Good-standard reference for the gap assessment</Typography>
+                        </Box>
+
+                        {benchmarkMode === 'upload' ? (
+                          <>
+                            <input type="file" accept=".docx" ref={benchmarkRef} style={{ display: 'none' }} onChange={handleBenchmarkChange} />
+                            <Box
+                              onClick={() => benchmarkRef.current?.click()}
+                              sx={{
+                                cursor: 'pointer',
+                                border: '2px dashed',
+                                borderColor: benchmarkFile ? '#667eea' : '#e2e8f0',
+                                borderRadius: 2,
+                                p: isCompact ? 1.5 : 2,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 1.5,
+                                background: benchmarkFile ? '#f5f3ff' : 'background.paper',
+                                transition: 'all 0.2s',
+                                '&:hover': { borderColor: '#667eea', background: '#f5f3ff' },
+                              }}
+                            >
+                              <Article sx={{ fontSize: 26, color: benchmarkFile ? '#667eea' : '#9E9E9E', flexShrink: 0 }} />
+                              {benchmarkFile ? (
+                                <Box display="flex" alignItems="center" gap={0.5}>
+                                  <CheckCircle sx={{ fontSize: 14, color: '#667eea' }} />
+                                  <Typography variant="caption" color="#667eea" noWrap sx={{ maxWidth: 320 }}>{benchmarkFile.name}</Typography>
+                                </Box>
+                              ) : (
+                                <Typography variant="caption" color="text.secondary">Click to upload a good-standard .docx</Typography>
+                              )}
+                            </Box>
+                          </>
+                        ) : (
+                          <Autocomplete
+                            size="small"
+                            fullWidth
+                            options={libraryPolicies}
+                            loading={loadingLibrary}
+                            getOptionLabel={(o) => o.filename || o.policy_id}
+                            value={libraryPolicies.find(p => p.policy_id === benchmarkPolicyId) || null}
+                            onChange={(_, val) => setBenchmarkPolicyId(val ? val.policy_id : null)}
+                            isOptionEqualToValue={(o, v) => o.policy_id === v.policy_id}
+                            noOptionsText={loadingLibrary ? 'Loading…' : `No ${formData.function} policies in the library`}
+                            renderOption={(props, option) => (
+                              <li {...props} key={option.policy_id}>
+                                <Box>
+                                  <Typography variant="body2" fontWeight={600}>{option.filename}</Typography>
+                                  {option.description && (
+                                    <Typography variant="caption" color="text.secondary" sx={{
+                                      display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+                                    }}>
+                                      {option.description}
+                                    </Typography>
+                                  )}
+                                </Box>
+                              </li>
+                            )}
+                            renderInput={(params) => (
+                              <TextField
+                                {...params}
+                                placeholder={`Search ${formData.function} policies in the library…`}
+                                InputProps={{
+                                  ...params.InputProps,
+                                  endAdornment: (
+                                    <>
+                                      {loadingLibrary ? <CircularProgress size={16} /> : null}
+                                      {params.InputProps.endAdornment}
+                                    </>
+                                  ),
+                                }}
+                              />
+                            )}
+                          />
+                        )}
+
+                        <Box display="flex" alignItems="center" mt={1}>
+                          <FormControlLabel
+                            sx={{ m: 0 }}
+                            control={
+                              <Switch
+                                size="small"
+                                checked={benchmarkMode === 'browse'}
+                                onChange={(e) => {
+                                  const browse = e.target.checked;
+                                  setBenchmarkMode(browse ? 'browse' : 'upload');
+                                  if (browse) setBenchmarkFile(null); else setBenchmarkPolicyId(null);
+                                }}
+                                sx={{
+                                  '& .MuiSwitch-switchBase.Mui-checked': { color: '#667eea' },
+                                  '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { backgroundColor: '#667eea' },
+                                }}
+                              />
+                            }
+                            label={
+                              <Typography variant="caption" color="text.secondary">
+                                {benchmarkMode === 'browse' ? 'Browse from library' : 'Upload a file'}
+                              </Typography>
+                            }
+                          />
+                        </Box>
+
+                        <Box sx={{ mt: 1.5, pt: 1.5, borderTop: '1px solid #eef0f6' }}>
+                          <Typography variant="caption" fontWeight={600} display="block">Rewrite intensity</Typography>
+                          <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
+                            Preserve keeps ≥50-60% of the client's policy. Use Rebuild only for weak/light policies you've agreed to largely rewrite.
+                          </Typography>
+                          <ToggleButtonGroup
+                            size="small"
+                            exclusive
+                            value={reviewIntensity}
+                            onChange={(_, val) => { if (val) setReviewIntensity(val); }}
+                            sx={{
+                              '& .MuiToggleButton-root.Mui-selected': { color: 'white', backgroundColor: '#667eea', '&:hover': { backgroundColor: '#5a6fd6' } },
+                              '& .MuiToggleButton-root': { textTransform: 'none', py: 0.25 },
+                            }}
+                          >
+                            <ToggleButton value="preserve">Preserve</ToggleButton>
+                            <ToggleButton value="rebuild">Rebuild</ToggleButton>
+                          </ToggleButtonGroup>
+                        </Box>
+                      </Box>
                     </Box>
                   )}
                 </Box>
@@ -672,23 +819,25 @@ const NewDraftPage: React.FC = () => {
                     )}
                   </Grid>}
 
-                  <Grid item xs={12} md={6}>
-                    <FormControl fullWidth required size={isCompact ? 'small' : 'medium'}>
-                      <InputLabel>Function</InputLabel>
-                      <Select
-                        value={formData.function}
-                        onChange={(e) => setFormData({ ...formData, function: e.target.value })}
-                        label="Function"
-                        sx={{ backgroundColor: 'background.paper' }}
-                      >
-                        {functions.map((func) => (
-                          <MenuItem key={func} value={func}>
-                            {func}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                  </Grid>
+                  {startingPoint !== 'upload' && (
+                    <Grid item xs={12} md={6}>
+                      <FormControl fullWidth required size={isCompact ? 'small' : 'medium'}>
+                        <InputLabel>Function</InputLabel>
+                        <Select
+                          value={formData.function}
+                          onChange={(e) => handleFunctionChange(e.target.value)}
+                          label="Function"
+                          sx={{ backgroundColor: 'background.paper' }}
+                        >
+                          {functions.map((func) => (
+                            <MenuItem key={func} value={func}>
+                              {func}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    </Grid>
+                  )}
 
                   <Grid item xs={12}>
                     <TextField
