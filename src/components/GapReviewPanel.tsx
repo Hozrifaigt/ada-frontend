@@ -301,6 +301,91 @@ const GapReviewPanel: React.FC<GapReviewPanelProps> = ({ draftId, toc, onContent
     }
   };
 
+  // Consolidate this section's theme from across the whole policy (Stage 2 on-demand action);
+  // the result is reviewed through the same preview → confirm flow.
+  const [consolidating, setConsolidating] = useState(false);
+  const handleConsolidate = async () => {
+    if (!selectedUnit) return;
+    setConsolidating(true);
+    setError(null);
+    try {
+      const res = await draftService.consolidateTheme(draftId, selectedUnit.topicId, selectedUnit.subtopicId);
+      setProposed(res.content);
+      setProposedView('diff');
+    } catch (e: any) {
+      setError(e.response?.data?.detail || 'Failed to consolidate this theme.');
+    } finally {
+      setConsolidating(false);
+    }
+  };
+
+  // One finding card (with evidence). Extracted so findings can be grouped benchmark-first then law.
+  const renderFinding = (f: GapFinding) => (
+    <Paper
+      key={f.id}
+      elevation={0}
+      sx={{ p: 1.5, mb: 1.5, border: '1px solid #e2e8f0', borderRadius: 2, opacity: confirmed[f.id] === false ? 0.55 : 1 }}
+    >
+      <Box display="flex" alignItems="flex-start" gap={1}>
+        <Checkbox
+          size="small"
+          checked={confirmed[f.id] !== false}
+          onChange={(e) => setConfirmed((prev) => ({ ...prev, [f.id]: e.target.checked }))}
+          sx={{ p: 0.25, color: '#667eea', '&.Mui-checked': { color: '#667eea' } }}
+        />
+        <Box sx={{ flex: 1 }}>
+          <Box display="flex" alignItems="center" gap={0.5} mb={0.5} flexWrap="wrap">
+            <Chip
+              label={f.type.replace('_', ' ')}
+              size="small"
+              sx={{ height: 20, fontSize: '0.6rem', fontWeight: 700, textTransform: 'capitalize', color: '#667eea', backgroundColor: '#f5f3ff' }}
+            />
+            <Chip
+              icon={SOURCE_ICON[f.source] as any}
+              label={f.source}
+              size="small"
+              sx={{ height: 20, fontSize: '0.6rem', fontWeight: 600, textTransform: 'capitalize', color: '#475569', backgroundColor: '#f1f5f9' }}
+            />
+            <Chip
+              label={f.severity}
+              size="small"
+              sx={{ height: 20, fontSize: '0.6rem', fontWeight: 700, textTransform: 'capitalize', color: 'white', backgroundColor: SEVERITY_COLOR[f.severity] || '#64748b' }}
+            />
+          </Box>
+          <Typography variant="body2" sx={{ mb: 1, color: '#2d3748' }}>{f.description}</Typography>
+          {f.evidence && (
+            <Box sx={{ mb: 1, p: 1, borderLeft: '3px solid #c4b5fd', backgroundColor: '#faf5ff', borderRadius: 1 }}>
+              <Typography variant="caption" sx={{ display: 'block', fontWeight: 700, color: '#7c3aed', mb: 0.25 }}>
+                Evidence{f.evidence_source ? ` — ${f.evidence_source}` : ''}
+              </Typography>
+              <Typography variant="caption" sx={{ display: 'block', fontStyle: 'italic', color: '#475569' }}>
+                “{f.evidence}”
+              </Typography>
+            </Box>
+          )}
+          <TextField
+            fullWidth
+            multiline
+            size="small"
+            label="Suggested change"
+            value={edits[f.id] ?? f.suggested_change}
+            onChange={(e) => setEdits((prev) => ({ ...prev, [f.id]: e.target.value }))}
+            InputProps={{ sx: { fontSize: '0.8rem' } }}
+          />
+        </Box>
+      </Box>
+    </Paper>
+  );
+
+  // Group findings into the client's per-section pipeline: benchmark check first, then law/regulation.
+  const findingGroups: { key: string; label: string; items: GapFinding[] }[] = report
+    ? [
+        { key: 'benchmark', label: '1. Benchmark check', items: report.findings.filter((f) => f.source === 'benchmark') },
+        { key: 'regulation', label: '2. Law / regulation check', items: report.findings.filter((f) => f.source === 'regulation') },
+        { key: 'previous', label: '3. Continuity (previous policy)', items: report.findings.filter((f) => f.source === 'previous') },
+      ].filter((g) => g.items.length > 0)
+    : [];
+
   const statusChip = (s: Status) => {
     const map: Record<Status, { label: string; color: string; bg: string }> = {
       pending: { label: 'Pending', color: '#64748b', bg: '#f1f5f9' },
@@ -549,51 +634,13 @@ const GapReviewPanel: React.FC<GapReviewPanelProps> = ({ draftId, toc, onContent
                       </Typography>
                     </Box>
                   ) : (
-                    report.findings.map((f) => (
-                      <Paper
-                        key={f.id}
-                        elevation={0}
-                        sx={{ p: 1.5, mb: 1.5, border: '1px solid #e2e8f0', borderRadius: 2, opacity: confirmed[f.id] === false ? 0.55 : 1 }}
-                      >
-                        <Box display="flex" alignItems="flex-start" gap={1}>
-                          <Checkbox
-                            size="small"
-                            checked={confirmed[f.id] !== false}
-                            onChange={(e) => setConfirmed((prev) => ({ ...prev, [f.id]: e.target.checked }))}
-                            sx={{ p: 0.25, color: '#667eea', '&.Mui-checked': { color: '#667eea' } }}
-                          />
-                          <Box sx={{ flex: 1 }}>
-                            <Box display="flex" alignItems="center" gap={0.5} mb={0.5} flexWrap="wrap">
-                              <Chip
-                                label={f.type.replace('_', ' ')}
-                                size="small"
-                                sx={{ height: 20, fontSize: '0.6rem', fontWeight: 700, textTransform: 'capitalize', color: '#667eea', backgroundColor: '#f5f3ff' }}
-                              />
-                              <Chip
-                                icon={SOURCE_ICON[f.source] as any}
-                                label={f.source}
-                                size="small"
-                                sx={{ height: 20, fontSize: '0.6rem', fontWeight: 600, textTransform: 'capitalize', color: '#475569', backgroundColor: '#f1f5f9' }}
-                              />
-                              <Chip
-                                label={f.severity}
-                                size="small"
-                                sx={{ height: 20, fontSize: '0.6rem', fontWeight: 700, textTransform: 'capitalize', color: 'white', backgroundColor: SEVERITY_COLOR[f.severity] || '#64748b' }}
-                              />
-                            </Box>
-                            <Typography variant="body2" sx={{ mb: 1, color: '#2d3748' }}>{f.description}</Typography>
-                            <TextField
-                              fullWidth
-                              multiline
-                              size="small"
-                              label="Suggested change"
-                              value={edits[f.id] ?? f.suggested_change}
-                              onChange={(e) => setEdits((prev) => ({ ...prev, [f.id]: e.target.value }))}
-                              InputProps={{ sx: { fontSize: '0.8rem' } }}
-                            />
-                          </Box>
-                        </Box>
-                      </Paper>
+                    findingGroups.map((g) => (
+                      <Box key={g.key} sx={{ mb: 1 }}>
+                        <Typography variant="caption" sx={{ display: 'block', fontWeight: 700, color: '#64748b', mb: 0.75, textTransform: 'uppercase', letterSpacing: 0.4 }}>
+                          {g.label}
+                        </Typography>
+                        {g.items.map((f) => renderFinding(f))}
+                      </Box>
                     ))
                   )}
                 </>
@@ -630,6 +677,18 @@ const GapReviewPanel: React.FC<GapReviewPanelProps> = ({ draftId, toc, onContent
               </Box>
             ) : report ? (
               <Box sx={{ p: 2, borderTop: '1px solid #e2e8f0', display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                <Tooltip title="Pull everything about this theme from across the whole policy into this section, aligned to the benchmark">
+                  <span>
+                    <Button
+                      variant="text"
+                      disabled={consolidating}
+                      onClick={handleConsolidate}
+                      sx={{ textTransform: 'none', color: '#764ba2' }}
+                    >
+                      {consolidating ? 'Consolidating…' : 'Consolidate from whole policy'}
+                    </Button>
+                  </span>
+                </Tooltip>
                 <Button
                   variant="outlined"
                   disabled={generating}

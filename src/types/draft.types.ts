@@ -57,9 +57,22 @@ export interface DraftMetadata {
   review_mode?: boolean;
   benchmark_policy_id?: string;
   benchmark_source?: 'library' | 'uploaded';
+  benchmark_topics_json?: string | null;
+  benchmark_toc_json?: string | null;
   review_intensity?: 'preserve' | 'rebuild';
   toc_reconciliation_note?: string | null;
   consistency_report_json?: string | null;
+  // Perfect-TOC-first stage (v2)
+  client_toc_json?: string | null;
+  good_toc_json?: string | null;
+  good_toc_basis_json?: string | null;
+  toc_approved?: boolean;
+}
+
+// A lightweight TOC structure (titles only) used for the extracted/good preview columns and adoption.
+export interface TocStructureItem {
+  title: string;
+  subtopics?: string[];
 }
 
 export interface LibraryPolicy {
@@ -77,6 +90,8 @@ export interface GapFinding {
   severity: 'high' | 'medium' | 'low';
   description: string;
   suggested_change: string;
+  evidence?: string | null;
+  evidence_source?: string | null;
 }
 
 export interface GapReport {

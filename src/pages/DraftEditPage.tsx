@@ -11,6 +11,7 @@ import {
   Paper,
   IconButton,
   TextField,
+  MenuItem,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -77,6 +78,8 @@ import { Draft, ConversationEntry, GenerateContentRequest, ContentGenerationResp
 import GapReviewPanel from '../components/GapReviewPanel';
 import HistoryPanel from '../components/HistoryPanel';
 import ConsistencyPanel from '../components/ConsistencyPanel';
+import TocComparePanel from '../components/TocComparePanel';
+import TocEditor from '../components/TocEditor';
 
 // Extended conversation entry to store full content
 interface ExtendedConversationEntry extends ConversationEntry {
@@ -2896,6 +2899,42 @@ function ExportReviewPanel({ draft, currentToc }: ExportReviewPanelProps) {
   );
 }
 
+// ----- Helpers for the three reference TOCs (titles-only snapshots <-> editor topic shape) -----
+type TocItem = { title: string; subtopics?: string[] };
+
+function parseTocItems(json?: string | null): TocItem[] {
+  if (!json) return [];
+  try {
+    const v = JSON.parse(json);
+    if (!Array.isArray(v)) return [];
+    return v
+      .map((t: any) => ({
+        title: t.topic || t.title || t.name || '',
+        subtopics: (t.subtopics || [])
+          .map((s: any) => (typeof s === 'string' ? s : (s.topic || s.title || s.name || '')))
+          .filter(Boolean),
+      }))
+      .filter((t: any) => t.title);
+  } catch {
+    return [];
+  }
+}
+
+function itemsToTopics(items: TocItem[]): Draft['toc'] {
+  return items.map((t, i) => ({
+    topic_id: `t_${i}_${t.title}`, topic: t.title, order: i + 1,
+    content: '', summary: '', conversation_history: [],
+    subtopics: (t.subtopics || []).map((s, j) => ({
+      subtopic_id: `s_${i}_${j}_${s}`, topic: s, order: j + 1,
+      content: '', summary: '', conversation_history: [],
+    })),
+  }));
+}
+
+function topicsToItems(toc: Draft['toc']): TocItem[] {
+  return toc.map((t) => ({ title: t.topic, subtopics: t.subtopics.map((s) => s.topic) }));
+}
+
 const DraftEditPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -2974,6 +3013,27 @@ const DraftEditPage: React.FC = () => {
   const [showErrorNotification, setShowErrorNotification] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
+  // Second-row "Load TOC" selector (review drafts): which of the three TOCs the editor + chatbot work on.
+  const [selectedTocSource, setSelectedTocSource] = useState<'good' | 'client' | 'benchmark'>('good');
+  const [savingSelected, setSavingSelected] = useState(false);
+  // Default the dropdown to Good when the working TOC has sections, else Current — set once per draft
+  // (so a later reload doesn't override a selection the reviewer made).
+  const defaultTocSourceRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (draft && draft.id && defaultTocSourceRef.current !== draft.id) {
+      defaultTocSourceRef.current = draft.id;
+      setSelectedTocSource(draft.toc && draft.toc.length > 0 ? 'good' : 'client');
+    }
+  }, [draft]);
+
+  // The TOC the second-row editor + chatbot currently operate on.
+  const selectedToc = React.useMemo<Draft['toc']>(() => {
+    if (!draft) return currentToc;
+    if (selectedTocSource === 'client') return itemsToTopics(parseTocItems(draft.metadata.client_toc_json));
+    if (selectedTocSource === 'benchmark') return itemsToTopics(parseTocItems(draft.metadata.benchmark_toc_json || draft.metadata.benchmark_topics_json));
+    return currentToc; // 'good' = the working TOC
+  }, [selectedTocSource, draft, currentToc]);
+
   const loadDraft = React.useCallback(async (draftId: string) => {
     setLoading(true);
     setError(null);
@@ -2988,9 +3048,10 @@ const DraftEditPage: React.FC = () => {
       if (data.metadata?.toc_source) {
         setTocSource(data.metadata.toc_source as 'similarity_search' | 'similar_policy' | 'ai_generated' | 'uploaded_policy');
       }
-      // Land review drafts on the Gap Review tab (index 4)
+      // Land review drafts on the Table of Contents tab (index 1) — the TOC-first workflow:
+      // get the perfect TOC agreed before any per-section gap/content work.
       if (data.metadata?.review_mode) {
-        setTabValue(4);
+        setTabValue(1);
       }
       // Load TOC chat history if available
       if (data.toc_chat_history && data.toc_chat_history.length > 0) {
@@ -3045,11 +3106,21 @@ const DraftEditPage: React.FC = () => {
     setError(null);
 
     try {
-      // Call TOC chat endpoint
+      // Call TOC chat endpoint — operate on the dropdown-selected TOC (omit for 'good' = working TOC).
+      // When editing the Good TOC, also pass the Current + Extracted TOCs as references so the bot can
+      // propose a better structure based on both + the user's query.
+      const references = selectedTocSource === 'good'
+        ? {
+            client_toc: itemsToTopics(parseTocItems(draft.metadata.client_toc_json)),
+            benchmark_toc: itemsToTopics(parseTocItems(draft.metadata.benchmark_toc_json || draft.metadata.benchmark_topics_json)),
+          }
+        : undefined;
       const response = await draftService.chatModifyToc(
         draft.id,
         userMessage,
-        tocChatHistory
+        tocChatHistory,
+        selectedTocSource === 'good' ? undefined : selectedToc,
+        references
       );
 
       if (response.success) {
@@ -3099,9 +3170,9 @@ const DraftEditPage: React.FC = () => {
         return newSet;
       });
     }
-  }, [draft, tocChatHistory]);
+  }, [draft, tocChatHistory, selectedTocSource, selectedToc]);
 
-  // Confirm and apply TOC modification
+  // Confirm and apply TOC modification — persists to the dropdown-selected TOC.
   const confirmTocModification = React.useCallback(async () => {
     if (!pendingTocOperation || !draft || !tocPreview) return;
 
@@ -3109,23 +3180,20 @@ const DraftEditPage: React.FC = () => {
       const response = await draftService.confirmTocModification(
         draft.id,
         pendingTocOperation,
-        currentToc
+        selectedToc,
+        selectedTocSource
       );
 
       if (response.success) {
-        // Update the TOC
-        setCurrentToc(response.updated_toc);
-
-        // Also update the draft object's TOC
-        setDraft(prevDraft => {
-          if (!prevDraft) return prevDraft;
-          return {
-            ...prevDraft,
-            toc: response.updated_toc
-          };
-        });
-
-        setHasUnsavedChanges(true);
+        if (selectedTocSource === 'good') {
+          // The working TOC changed — update it in place.
+          setCurrentToc(response.updated_toc);
+          setDraft(prevDraft => (prevDraft ? { ...prevDraft, toc: response.updated_toc } : prevDraft));
+          setHasUnsavedChanges(true);
+        } else if (id) {
+          // A reference snapshot (client/benchmark) changed — reload so the editor + first-row table refresh.
+          await loadDraft(id);
+        }
 
         // Clear preview and pending operation
         setTocPreview(null);
@@ -3143,7 +3211,7 @@ const DraftEditPage: React.FC = () => {
       setErrorMessage(error.response?.data?.detail || error.message || 'Failed to apply TOC changes');
       setShowErrorNotification(true);
     }
-  }, [pendingTocOperation, draft, tocPreview, currentToc]);
+  }, [pendingTocOperation, draft, tocPreview, selectedToc, selectedTocSource, id, loadDraft]);
 
   // Auto-scroll to bottom when chat history updates
   useEffect(() => {
@@ -3467,6 +3535,40 @@ const DraftEditPage: React.FC = () => {
   };
 
   const [consistencyOpen, setConsistencyOpen] = useState(false);
+
+  // Save the dropdown-selected TOC back to its own source: 'good' -> working TOC (content preserved by
+  // id), 'client'/'benchmark' -> their reference snapshot. Reload after so both views stay in sync.
+  const handleSaveSelected = async (toc: Draft['toc']) => {
+    if (!draft || !id) return;
+    setSavingSelected(true);
+    setErrorMessage('');
+    try {
+      if (selectedTocSource === 'good') {
+        const tocForApi = toc.map((topic, index) => ({
+          id: topic.topic_id,
+          topic: topic.topic,
+          order: index + 1,
+          source_topic_id: topic.source_topic_id,
+          subtopics: topic.subtopics.map((s, j) => ({
+            id: s.subtopic_id,
+            topic: s.topic,
+            order: j + 1,
+            source_subtopic_id: s.source_subtopic_id,
+          })),
+        }));
+        await draftService.updateTOC(draft.id, { toc: tocForApi });
+      } else {
+        await draftService.saveTocSnapshot(draft.id, selectedTocSource, topicsToItems(toc));
+      }
+      await loadDraft(id);
+      setShowSuccessNotification(true);
+    } catch (e: any) {
+      setErrorMessage(e.response?.data?.detail || 'Failed to save the TOC.');
+      setShowErrorNotification(true);
+    } finally {
+      setSavingSelected(false);
+    }
+  };
 
   // Utility function to check if TOC has changes
   const checkForChanges = (newToc: Draft['toc']) => {
@@ -4126,16 +4228,42 @@ const DraftEditPage: React.FC = () => {
       </TabPanel>
 
       <TabPanel value={tabValue} index={1}>
-        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2, height: { xs: 'auto', md: 'calc(100vh - 280px)' }, minHeight: { md: 500 } }}>
+        {/* Perfect-TOC-first: three TOCs (current / extracted / good) + adopt & approve (review drafts only) */}
+        {draft?.metadata?.review_mode && (
+          <TocComparePanel
+            draftId={draft.id}
+            metadata={draft.metadata}
+            currentToc={currentToc}
+            onChanged={() => { if (id) loadDraft(id); }}
+          />
+        )}
+        <Box sx={{ mt: 1.5, display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2, height: { xs: 'auto', md: 'calc(100vh - 280px)' }, minHeight: { md: 500 } }}>
           {/* Left Panel - TOC Management */}
           <Box sx={{ flex: '1 1 50%', display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: { xs: 350, md: 'auto' } }}>
             {/* TOC Header */}
             <Box mb={1.5}>
               <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
-                <Box>
+                <Box display="flex" alignItems="center" gap={1}>
                   <Typography variant="body1" fontWeight={600} sx={{ color: '#1a202c' }}>
                     Table of Contents
                   </Typography>
+                  {draft?.metadata?.review_mode && (
+                    <TextField
+                      select size="small"
+                      label="Editing"
+                      value={selectedTocSource}
+                      onChange={(e) => setSelectedTocSource(e.target.value as 'good' | 'client' | 'benchmark')}
+                      sx={{
+                        minWidth: 150,
+                        '& .MuiInputBase-input': { py: 0.4, fontSize: '0.7rem' },
+                        '& .MuiInputLabel-root': { fontSize: '0.7rem' },
+                      }}
+                    >
+                      <MenuItem value="good" sx={{ fontSize: '0.7rem' }}>Good TOC (working)</MenuItem>
+                      <MenuItem value="client" sx={{ fontSize: '0.7rem' }}>Current TOC</MenuItem>
+                      <MenuItem value="benchmark" sx={{ fontSize: '0.7rem' }}>Benchmark TOC</MenuItem>
+                    </TextField>
+                  )}
                 </Box>
                 {tocSource === 'ai_generated' && (
                   <Tooltip title="This table of contents was generated by AI based on your description">
@@ -4181,139 +4309,24 @@ const DraftEditPage: React.FC = () => {
                 )}
               </Box>
             </Box>
-            <Button
-              variant="contained"
-              size="small"
-              startIcon={<Add sx={{ fontSize: 16 }} />}
-              onClick={() => setOpenAddDialog(true)}
-              sx={{
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                textTransform: 'none',
-                fontWeight: 600,
-                fontSize: '0.75rem',
-                px: 2,
-                py: 0.5,
-              }}
-            >
-              Add New Topic
-            </Button>
-
-            <Typography variant="caption" sx={{ color: '#64748b', mb: 2, mt: 1.5, display: 'block' }}>
-              {tocSource === 'ai_generated'
-                ? 'AI has suggested this structure based on your policy description. You can customize it as needed.'
-                : (tocSource === 'similar_policy' || tocSource === 'similarity_search')
-                ? 'This structure is adapted from a similar existing policy in the library. You can customize it as needed.'
-                : 'Organize your policy document structure. Click and drag to reorder, edit titles, or delete sections as needed.'}
+            <Typography variant="caption" sx={{ color: '#64748b', mb: 1.5, mt: 0.5, display: 'block' }}>
+              {selectedTocSource === 'good'
+                ? 'Editing the Good (working) TOC. Drag to reorder, edit titles, add/delete sections, then Save.'
+                : selectedTocSource === 'client'
+                ? 'Editing the Current (client) reference TOC. Changes save back to that table.'
+                : 'Editing the Benchmark reference TOC. Changes save back to that table.'}
             </Typography>
 
-            {/* Scrollable TOC Area */}
-            <Box sx={{ flex: 1, overflow: 'auto', pr: 2 }}>
-          {/* TOC Items with Drag and Drop */}
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
-          >
-            <SortableContext
-              items={currentToc.map(topic => topic.topic_id)}
-              strategy={verticalListSortingStrategy}
-            >
-              <Box sx={{ space: 2 }}>
-                {currentToc.map((topic, index) => (
-                  <SortableTopic
-                    key={topic.topic_id}
-                    topic={topic}
-                    index={index}
-                    editingTopic={editingTopic}
-                    expandedTopics={expandedTopics}
-                    onToggleExpansion={toggleTopicExpansion}
-                    onEditTopic={handleEditTopic}
-                    onDeleteTopic={handleDeleteTopic}
-                    onSaveEdit={handleSaveEdit}
-                    setEditingTopic={setEditingTopic}
-                    onAddSubtopic={handleAddNewSubtopic}
-                    onSubtopicDragEnd={handleSubtopicDragEnd}
-                  />
-                ))}
-              </Box>
-            </SortableContext>
-          </DndContext>
-
-          {/* Add Topic Dialog */}
-          <Dialog
-            open={openAddDialog}
-            onClose={() => setOpenAddDialog(false)}
-            maxWidth="sm"
-            fullWidth
-          >
-            <DialogTitle sx={{ fontWeight: 600 }}>Add New Topic</DialogTitle>
-            <DialogContent>
-              <TextField
-                autoFocus
-                fullWidth
-                label="Topic Title"
-                value={newTopicText}
-                onChange={(e) => setNewTopicText(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleAddNewTopic()}
-                variant="outlined"
-                sx={{ mt: 2 }}
+            {/* The selected TOC — same editor used for the three tables above; the chatbot edits it too */}
+            <Box sx={{ flex: 1, overflow: 'hidden' }}>
+              <TocEditor
+                key={selectedTocSource}
+                toc={selectedToc}
+                saving={savingSelected}
+                saveLabel="Save TOC"
+                onSave={handleSaveSelected}
+                maxHeight="calc(100vh - 430px)"
               />
-            </DialogContent>
-            <DialogActions>
-              <Button onClick={() => setOpenAddDialog(false)}>
-                Cancel
-              </Button>
-              <Button
-                onClick={handleAddNewTopic}
-                variant="contained"
-                disabled={!newTopicText.trim()}
-                sx={{
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                }}
-              >
-                Add Topic
-              </Button>
-            </DialogActions>
-          </Dialog>
-            </Box>
-
-            {/* Save TOC Button */}
-            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 1.5 }}>
-            <Button
-              variant="contained"
-              size="small"
-              startIcon={<Save sx={{ fontSize: 16 }} />}
-              onClick={handleSaveToc}
-              disabled={!hasUnsavedChanges || saving}
-              sx={{
-                background: hasUnsavedChanges || saving
-                  ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-                  : 'rgba(255,255,255,0.9)',
-                color: hasUnsavedChanges || saving ? 'white' : '#667eea',
-                fontWeight: 600,
-                fontSize: '0.75rem',
-                px: 2.5,
-                py: 0.75,
-                border: hasUnsavedChanges || saving ? 'none' : '2px solid rgba(102, 126, 234, 0.3)',
-                boxShadow: hasUnsavedChanges || saving ? '0 4px 12px rgba(102, 126, 234, 0.25)' : 'none',
-                '&:hover': {
-                  background: hasUnsavedChanges || saving
-                    ? 'linear-gradient(135deg, #5569d8 0%, #6a4291 100%)'
-                    : 'rgba(255,255,255,1)',
-                  transform: hasUnsavedChanges && !saving ? 'translateY(-2px)' : 'none',
-                  boxShadow: hasUnsavedChanges || saving ? '0 6px 16px rgba(102, 126, 234, 0.3)' : '0 2px 8px rgba(102, 126, 234, 0.15)',
-                },
-                '&.Mui-disabled': {
-                  background: saving
-                    ? 'linear-gradient(135deg, rgba(102, 126, 234, 0.6) 0%, rgba(118, 75, 162, 0.6) 100%)'
-                    : 'rgba(255,255,255,0.5)',
-                  color: saving ? 'white' : 'rgba(102, 126, 234, 0.5)',
-                },
-                transition: 'all 0.3s ease',
-              }}
-            >
-              {saving ? 'Saving Changes...' : hasUnsavedChanges ? 'Save TOC Changes' : 'No Changes'}
-            </Button>
             </Box>
           </Box>
 

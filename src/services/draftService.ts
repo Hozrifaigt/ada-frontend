@@ -306,13 +306,20 @@ export const draftService = {
   async chatModifyToc(
     draftId: string,
     message: string,
-    conversationHistory?: Array<{ user_message: string; ai_response: string }>
+    conversationHistory?: Array<{ user_message: string; ai_response: string }>,
+    currentToc?: TOCTopic[],
+    references?: { client_toc?: TOCTopic[]; benchmark_toc?: TOCTopic[] }
   ): Promise<TOCChatResponse> {
     const response = await apiClient.post(
       `/api/v1/drafts/${draftId}/toc/chat`,
       {
         message,
-        conversation_history: conversationHistory || []
+        conversation_history: conversationHistory || [],
+        // The TOC the chatbot should operate on (dropdown-selected); omitted → backend uses working TOC.
+        current_toc: currentToc,
+        // Reference TOCs (passed when editing Good) so the bot can merge Current + Extracted + the query.
+        client_toc: references?.client_toc,
+        benchmark_toc: references?.benchmark_toc,
       }
     );
     return response.data;
@@ -321,13 +328,15 @@ export const draftService = {
   async confirmTocModification(
     draftId: string,
     operation: TOCOperation,
-    currentToc: TOCTopic[]
+    currentToc: TOCTopic[],
+    target?: 'good' | 'client' | 'benchmark'
   ): Promise<TOCConfirmResponse> {
     const response = await apiClient.post(
       `/api/v1/drafts/${draftId}/toc/confirm`,
       {
         operation,
-        current_toc: currentToc
+        current_toc: currentToc,
+        target,
       }
     );
     return response.data;
@@ -340,6 +349,79 @@ export const draftService = {
     await apiClient.put(`/api/v1/drafts/${draftId}/toc/chat-history`, {
       conversation_history: conversationHistory,
     });
+  },
+
+  // ===== Perfect-TOC-first stage (v2) =====
+
+  // Extract a TOC structure from an uploaded .docx (to adopt as the good TOC).
+  async extractTocFromFile(
+    draftId: string,
+    file: File
+  ): Promise<{ preview_toc: import('../types/draft.types').TocStructureItem[]; message: string }> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await longTimeoutClient.post(
+      `/api/v1/drafts/${draftId}/toc/extract-from-file`,
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    );
+    return response.data;
+  },
+
+  // Parse a pasted/described TOC into a structure (to adopt as the good TOC).
+  async tocFromText(
+    draftId: string,
+    text: string
+  ): Promise<{ preview_toc: import('../types/draft.types').TocStructureItem[]; message: string }> {
+    const response = await longTimeoutClient.post(`/api/v1/drafts/${draftId}/toc/from-text`, { text });
+    return response.data;
+  },
+
+  // Adopt a TOC structure as the working good TOC (redistributes existing content by title match).
+  async useToc(
+    draftId: string,
+    toc: import('../types/draft.types').TocStructureItem[]
+  ): Promise<{ success: boolean; draft: Draft }> {
+    const response = await longTimeoutClient.post(`/api/v1/drafts/${draftId}/toc/use`, { toc });
+    return response.data;
+  },
+
+  // Persist an edited reference TOC. which = 'client' | 'benchmark' | 'good'.
+  // 'good' adopts it as the working TOC (content redistributed by title); client/benchmark
+  // update the read-only reference snapshots shown in the TOC tab.
+  async saveTocSnapshot(
+    draftId: string,
+    which: 'client' | 'benchmark' | 'good',
+    toc: import('../types/draft.types').TocStructureItem[]
+  ): Promise<{ success: boolean; draft: Draft }> {
+    const response = await longTimeoutClient.post(`/api/v1/drafts/${draftId}/toc/snapshot`, { which, toc });
+    return response.data;
+  },
+
+  // Re-derive a fresh Good TOC by reconciling the current Current + Extracted TOCs.
+  async regenerateGoodToc(draftId: string): Promise<{ success: boolean; draft: Draft }> {
+    const response = await longTimeoutClient.post(`/api/v1/drafts/${draftId}/toc/regenerate-good`, {});
+    return response.data;
+  },
+
+  // Lock the good TOC as the agreed structure (gate before content work).
+  async approveToc(draftId: string): Promise<{ success: boolean; draft: Draft }> {
+    const response = await apiClient.post(`/api/v1/drafts/${draftId}/toc/approve`, {});
+    return response.data;
+  },
+
+  // Consolidate everything about a section's theme from across the whole policy (preview).
+  async consolidateTheme(
+    draftId: string,
+    topicId: string,
+    subtopicId?: string
+  ): Promise<{ content: string; word_count: number; message: string }> {
+    const qs = subtopicId ? `?subtopic_id=${encodeURIComponent(subtopicId)}` : '';
+    const response = await longTimeoutClient.post(
+      `/api/v1/drafts/${draftId}/topics/${topicId}/consolidate${qs}`,
+      {}
+    );
+    return response.data;
   },
 
   // Policy type methods removed - no longer using Excel templates
