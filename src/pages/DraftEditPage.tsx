@@ -4608,7 +4608,8 @@ const DraftEditPage: React.FC = () => {
           <ReviewPipelinePanel
             draftId={draft.id}
             toc={currentToc}
-            onContentApplied={(topicId, subtopicId, content) => {
+            onContentApplied={(topicId, subtopicId, content, reviewStep) => {
+              const stepPatch = reviewStep ? { review_step: reviewStep } : {};
               setCurrentToc(prev => prev.map(t => {
                 if (t.topic_id !== topicId) return t;
                 if (subtopicId) {
@@ -4616,12 +4617,12 @@ const DraftEditPage: React.FC = () => {
                     ...t,
                     subtopics: t.subtopics.map(s =>
                       s.subtopic_id === subtopicId
-                        ? { ...s, content }
+                        ? { ...s, content, ...stepPatch }
                         : s
                     ),
                   };
                 }
-                return { ...t, content };
+                return { ...t, content, ...stepPatch };
               }));
               // The Content Generation tab renders from centralized state (keyed by item id),
               // not from currentToc — mirror a normal save so it doesn't show stale content.

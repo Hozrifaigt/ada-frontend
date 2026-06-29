@@ -17,7 +17,6 @@ import {
 import {
   LibraryBooks,
   Gavel,
-  MergeType,
   CheckCircle,
   Lock,
   Send,
@@ -31,7 +30,8 @@ type ReviewStep = 'pending' | 'benchmark' | 'regulation' | 'review' | 'closed';
 interface ReviewPipelinePanelProps {
   draftId: string;
   toc: TOCTopic[];
-  onContentApplied: (topicId: string, subtopicId: string | undefined, content: string) => void;
+  // reviewStep is propagated so the parent's currentToc reflects the new step (survives tab switch / remount).
+  onContentApplied: (topicId: string, subtopicId: string | undefined, content: string, reviewStep?: ReviewStep) => void;
 }
 
 // A review unit is a topic or one of its subtopics.
@@ -149,6 +149,8 @@ const ReviewPipelinePanel: React.FC<ReviewPipelinePanelProps> = ({ draftId, toc,
   const [selectedKey, setSelectedKey] = useState<string | null>(units[0]?.key ?? null);
   const selected = units.find((u) => u.key === selectedKey) || null;
   const selectedStep: ReviewStep = selected ? stepOf(selected) : 'pending';
+  // A closed (done) section is read-only until reopened — no benchmark/regulation/edit actions.
+  const locked = selectedStep === 'closed';
 
   // Editable working content for the selected unit.
   const [editContent, setEditContent] = useState('');
@@ -236,20 +238,6 @@ const ReviewPipelinePanel: React.FC<ReviewPipelinePanelProps> = ({ draftId, toc,
     }
   };
 
-  const runConsolidate = async () => {
-    if (!selected) return;
-    setBusy('consolidate');
-    setError(null);
-    try {
-      const r = await draftService.consolidateTheme(draftId, selected.topicId, selected.subtopicId);
-      setPreview({ content: r.content, step: 'benchmark', label: 'Consolidated from whole policy' });
-    } catch (e: any) {
-      setError(e?.message || 'Consolidation failed');
-    } finally {
-      setBusy(null);
-    }
-  };
-
   const sendChat = async () => {
     if (!selected || !chatInput.trim()) return;
     const message = chatInput.trim();
@@ -284,7 +272,7 @@ const ReviewPipelinePanel: React.FC<ReviewPipelinePanelProps> = ({ draftId, toc,
       // Done with a step → move the timeline forward (you can still click back).
       if (step === 'benchmark') setActiveStep(1);
       else if (step === 'regulation') setActiveStep(2);
-      onContentApplied(selected.topicId, selected.subtopicId, content);
+      onContentApplied(selected.topicId, selected.subtopicId, content, applyStep as ReviewStep);
     } catch (e: any) {
       setError(e?.message || 'Could not save content');
     } finally {
@@ -298,8 +286,9 @@ const ReviewPipelinePanel: React.FC<ReviewPipelinePanelProps> = ({ draftId, toc,
     setError(null);
     try {
       await draftService.reviewClose(draftId, selected.topicId, selected.subtopicId, reopen);
-      setStepOverrides((prev) => ({ ...prev, [selected.key]: reopen ? 'review' : 'closed' }));
-      onContentApplied(selected.topicId, selected.subtopicId, editContent);
+      const newStep: ReviewStep = reopen ? 'review' : 'closed';
+      setStepOverrides((prev) => ({ ...prev, [selected.key]: newStep }));
+      onContentApplied(selected.topicId, selected.subtopicId, editContent, newStep);
     } catch (e: any) {
       setError(e?.message || 'Could not update section status');
     } finally {
@@ -403,6 +392,19 @@ const ReviewPipelinePanel: React.FC<ReviewPipelinePanelProps> = ({ draftId, toc,
 
         {error && <Alert severity="error" onClose={() => setError(null)}>{error}</Alert>}
 
+        {locked && (
+          <Alert
+            severity="success"
+            action={
+              <Button color="inherit" size="small" disabled={!!busy} onClick={() => toggleClose(true)}>
+                Reopen
+              </Button>
+            }
+          >
+            This section is marked done — reopen it to make changes.
+          </Alert>
+        )}
+
         {/* Timeline — Benchmark → Regulation → Finalize. Click any step to go back/forward. */}
         <Stepper nonLinear activeStep={activeStep} alternativeLabel sx={{ '& .MuiStepLabel-label': { fontSize: '0.75rem', mt: 0.5 } }}>
           {STEPS.map((label, i) => (
@@ -425,7 +427,7 @@ const ReviewPipelinePanel: React.FC<ReviewPipelinePanelProps> = ({ draftId, toc,
               <Button
                 size="small"
                 variant="contained"
-                disabled={busy === 'apply'}
+                disabled={busy === 'apply' || locked}
                 onClick={() => applyContent(preview.content, preview.step)}
                 sx={GRADIENT_BTN}
               >
@@ -446,14 +448,11 @@ const ReviewPipelinePanel: React.FC<ReviewPipelinePanelProps> = ({ draftId, toc,
                     size="small"
                     variant={benchmark ? 'outlined' : 'contained'}
                     startIcon={<LibraryBooks />}
-                    disabled={!!busy}
+                    disabled={!!busy || locked}
                     onClick={runBenchmark}
                     sx={benchmark ? undefined : GRADIENT_BTN}
                   >
                     {busy === 'benchmark' ? 'Reviewing…' : benchmark ? 'Re-run benchmark' : 'Run benchmark review'}
-                  </Button>
-                  <Button size="small" variant="outlined" startIcon={<MergeType />} disabled={!!busy} onClick={runConsolidate}>
-                    {busy === 'consolidate' ? 'Gathering…' : 'Consolidate from policy'}
                   </Button>
                 </Box>
 
@@ -504,7 +503,7 @@ const ReviewPipelinePanel: React.FC<ReviewPipelinePanelProps> = ({ draftId, toc,
                       <Button
                         size="small"
                         variant="contained"
-                        disabled={!!busy || benchmark.findings.filter((f) => checkedFindings[f.id]).length === 0}
+                        disabled={!!busy || locked || benchmark.findings.filter((f) => checkedFindings[f.id]).length === 0}
                         onClick={tweakSelected}
                         sx={GRADIENT_BTN}
                       >
@@ -513,7 +512,7 @@ const ReviewPipelinePanel: React.FC<ReviewPipelinePanelProps> = ({ draftId, toc,
                       <Button
                         size="small"
                         variant="outlined"
-                        disabled={!benchmark.as_is_suggestion || !!busy}
+                        disabled={!benchmark.as_is_suggestion || !!busy || locked}
                         onClick={() => setPreview({ content: benchmark.as_is_suggestion, step: 'benchmark', label: 'Use benchmark as-is' })}
                       >
                         Use benchmark as-is
@@ -538,7 +537,7 @@ const ReviewPipelinePanel: React.FC<ReviewPipelinePanelProps> = ({ draftId, toc,
                     size="small"
                     variant={reg ? 'outlined' : 'contained'}
                     startIcon={<Gavel />}
-                    disabled={!!busy}
+                    disabled={!!busy || locked}
                     onClick={runRegulation}
                     sx={reg ? undefined : GRADIENT_BTN}
                   >
@@ -566,7 +565,7 @@ const ReviewPipelinePanel: React.FC<ReviewPipelinePanelProps> = ({ draftId, toc,
                         <Button
                           size="small"
                           variant="contained"
-                          disabled={!reg.suggestion || !!busy}
+                          disabled={!reg.suggestion || !!busy || locked}
                           onClick={() =>
                             setPreview({
                               content: `${editContent.trim()}\n\n${reg.suggestion}`.trim(),
@@ -594,51 +593,54 @@ const ReviewPipelinePanel: React.FC<ReviewPipelinePanelProps> = ({ draftId, toc,
               </Box>
             )}
 
-            {/* STEP 3 — FINALIZE & CLOSE */}
+            {/* STEP 3 — FINALIZE (mark as done) */}
             {activeStep === 2 && (
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                <Typography variant="caption" sx={{ fontWeight: 700, color: '#475569' }}>SECTION CONTENT</Typography>
-                <TextField
-                  multiline
-                  minRows={8}
-                  maxRows={18}
-                  fullWidth
-                  value={editContent}
-                  onChange={(e) => setEditContent(e.target.value)}
-                  sx={{ '& textarea': { fontSize: '0.85rem', lineHeight: 1.6 } }}
-                />
-                <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                {selectedStep === 'closed' ? (
+                  <Button size="small" color="warning" variant="outlined" disabled={!!busy} onClick={() => toggleClose(true)}>
+                    Reopen
+                  </Button>
+                ) : (
                   <Button
                     size="small"
-                    variant="outlined"
-                    disabled={busy === 'apply' || editContent === selected.content}
-                    onClick={() => applyContent(editContent, 'review')}
+                    variant="contained"
+                    startIcon={<CheckCircle />}
+                    disabled={!!busy}
+                    onClick={() => toggleClose(false)}
+                    sx={GRADIENT_BTN}
                   >
-                    {busy === 'apply' ? 'Saving…' : 'Save edits'}
+                    Mark as done
                   </Button>
-                  <Box sx={{ flex: 1 }} />
-                  {selectedStep === 'closed' ? (
-                    <Button size="small" color="warning" variant="outlined" disabled={!!busy} onClick={() => toggleClose(true)}>
-                      Reopen
-                    </Button>
-                  ) : (
-                    <Button
-                      size="small"
-                      variant="contained"
-                      startIcon={<CheckCircle />}
-                      disabled={!!busy}
-                      onClick={() => toggleClose(false)}
-                      sx={GRADIENT_BTN}
-                    >
-                      Mark as done
-                    </Button>
-                  )}
-                </Box>
-                <Box>
-                  <Button size="small" onClick={() => setActiveStep(1)} sx={{ textTransform: 'none' }}>← Back to regulations</Button>
-                </Box>
+                )}
+                <Box sx={{ flex: 1 }} />
+                <Button size="small" onClick={() => setActiveStep(1)} sx={{ textTransform: 'none' }}>← Back to regulations</Button>
               </Box>
             )}
+
+            {/* Section content — editable in EVERY step (benchmark / regulation / finalize) */}
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <Typography variant="caption" sx={{ fontWeight: 700, color: '#475569' }}>SECTION CONTENT</Typography>
+              <TextField
+                multiline
+                minRows={7}
+                maxRows={16}
+                fullWidth
+                value={editContent}
+                onChange={(e) => setEditContent(e.target.value)}
+                disabled={locked}
+                sx={{ '& textarea': { fontSize: '0.85rem', lineHeight: 1.6 } }}
+              />
+              <Box>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  disabled={busy === 'apply' || locked || editContent === selected.content}
+                  onClick={() => applyContent(editContent, 'review')}
+                >
+                  {busy === 'apply' ? 'Saving…' : 'Save edits'}
+                </Button>
+              </Box>
+            </Box>
           </>
         )}
         </Box>
@@ -676,12 +678,12 @@ const ReviewPipelinePanel: React.FC<ReviewPipelinePanelProps> = ({ draftId, toc,
                   sendChat();
                 }
               }}
-              disabled={busy === 'chat'}
+              disabled={busy === 'chat' || locked}
             />
             <Button
               size="small"
               variant="contained"
-              disabled={busy === 'chat' || !chatInput.trim()}
+              disabled={busy === 'chat' || locked || !chatInput.trim()}
               onClick={sendChat}
               sx={{ ...GRADIENT_BTN, minWidth: 44 }}
             >
