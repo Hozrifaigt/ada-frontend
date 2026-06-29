@@ -476,14 +476,31 @@ export const draftService = {
   },
 
   // Step 2: law/regulation check for one section (RAG) → {applies, extract, suggestion}.
+  // has_regulations distinguishes "no regulations loaded" from "checked, none apply".
   async reviewRegulation(
     draftId: string,
     topicId: string,
     subtopicId?: string
-  ): Promise<{ applies: boolean; extract: string; suggestion: string; topic_id: string; subtopic_id: string | null; message: string }> {
+  ): Promise<{ applies: boolean; extract: string; suggestion: string; has_regulations: boolean; topic_id: string; subtopic_id: string | null; message: string }> {
     const qs = subtopicId ? `?subtopic_id=${encodeURIComponent(subtopicId)}` : '';
     const response = await longTimeoutClient.post(
       `/api/v1/drafts/${draftId}/topics/${topicId}/review/regulation${qs}`, {}
+    );
+    return response.data;
+  },
+
+  // Re-upload regulation .docx files to an existing review draft (Review tab → Regulations).
+  // Appends to the draft's regulation set so the per-section check can retrieve from it.
+  async uploadRegulations(
+    draftId: string,
+    files: File[]
+  ): Promise<{ has_regulations: boolean; added: string[]; message: string }> {
+    const form = new FormData();
+    files.forEach((f) => form.append('regulations_files', f));
+    const response = await longTimeoutClient.post(
+      `/api/v1/drafts/${draftId}/regulations/upload`,
+      form,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
     );
     return response.data;
   },

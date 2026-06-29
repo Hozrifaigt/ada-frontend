@@ -20,6 +20,7 @@ import {
   CheckCircle,
   Lock,
   Send,
+  UploadFile,
 } from '@mui/icons-material';
 import { draftService } from '../services/draftService';
 import { TOCTopic, GapFinding } from '../types/draft.types';
@@ -68,6 +69,8 @@ interface RegResult {
   applies: boolean;
   extract: string;
   suggestion: string;
+  // false = no regulation source loaded for this draft (distinct from "checked, none apply").
+  has_regulations: boolean;
 }
 
 interface ChatMsg {
@@ -163,7 +166,9 @@ const ReviewPipelinePanel: React.FC<ReviewPipelinePanelProps> = ({ draftId, toc,
   const [activeStep, setActiveStep] = useState(0);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [regsMsg, setRegsMsg] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const regFileRef = useRef<HTMLInputElement>(null);
 
   // Re-seed per-section state when the selection changes.
   useEffect(() => {
@@ -235,6 +240,25 @@ const ReviewPipelinePanel: React.FC<ReviewPipelinePanelProps> = ({ draftId, toc,
       setError(e?.message || 'Regulation check failed');
     } finally {
       setBusy(null);
+    }
+  };
+
+  // Re-upload regulation files to the draft (Review tab → Regulations). Draft-scoped, not per section.
+  const uploadRegs = async (files: FileList | null) => {
+    if (!files || !files.length) return;
+    setBusy('regupload');
+    setError(null);
+    setRegsMsg(null);
+    try {
+      const r = await draftService.uploadRegulations(draftId, Array.from(files));
+      setRegsMsg(r.message);
+      // Reflect that regulations now exist so the empty-state flips immediately.
+      setReg((prev) => (prev ? { ...prev, has_regulations: r.has_regulations } : prev));
+    } catch (e: any) {
+      setError(e?.message || 'Could not upload regulations');
+    } finally {
+      setBusy(null);
+      if (regFileRef.current) regFileRef.current.value = '';
     }
   };
 
@@ -532,7 +556,7 @@ const ReviewPipelinePanel: React.FC<ReviewPipelinePanelProps> = ({ draftId, toc,
             {/* STEP 2 — REGULATION */}
             {activeStep === 1 && (
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                <Box>
+                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
                   <Button
                     size="small"
                     variant={reg ? 'outlined' : 'contained'}
@@ -543,14 +567,41 @@ const ReviewPipelinePanel: React.FC<ReviewPipelinePanelProps> = ({ draftId, toc,
                   >
                     {busy === 'regulation' ? 'Checking…' : reg ? 'Re-check regulations' : 'Check regulations'}
                   </Button>
+                  {/* Draft-scoped: attach more regulation files so the check has something to retrieve from. */}
+                  <input
+                    ref={regFileRef}
+                    type="file"
+                    accept=".docx"
+                    multiple
+                    hidden
+                    onChange={(e) => uploadRegs(e.target.files)}
+                  />
+                  <Button
+                    size="small"
+                    variant="text"
+                    startIcon={<UploadFile />}
+                    disabled={!!busy}
+                    onClick={() => regFileRef.current?.click()}
+                    sx={{ textTransform: 'none' }}
+                  >
+                    {busy === 'regupload' ? 'Uploading…' : 'Upload regulations'}
+                  </Button>
                 </Box>
+                {regsMsg && (
+                  <Typography variant="caption" sx={{ color: '#047857' }}>{regsMsg}</Typography>
+                )}
 
                 {reg && (
                   <Paper variant="outlined" sx={{ p: 1.5, bgcolor: reg.applies ? '#fffbeb' : '#f8fafc' }}>
                     <Typography variant="caption" sx={{ fontWeight: 700, color: '#475569' }}>
                       REGULATION CHECK
                     </Typography>
-                    {reg.applies ? (
+                    {!reg.has_regulations ? (
+                      <Typography variant="body2" sx={{ fontSize: '0.8rem', color: '#64748b', my: 0.5 }}>
+                        No regulations loaded for this draft. Use <b>Upload regulations</b> above to attach
+                        regulation files, then run the check.
+                      </Typography>
+                    ) : reg.applies ? (
                       <>
                         {reg.extract && (
                           <Typography variant="body2" sx={{ fontSize: '0.8rem', fontStyle: 'italic', color: '#92400e', my: 0.5 }}>
