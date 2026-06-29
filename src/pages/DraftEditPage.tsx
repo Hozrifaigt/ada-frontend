@@ -24,7 +24,6 @@ import {
   useTheme,
 } from '@mui/material';
 import {
-  ArrowBack,
   Save,
   Edit,
   Delete,
@@ -52,7 +51,6 @@ import {
   Source,
   LibraryBooks,
   History,
-  Rule,
 } from '@mui/icons-material';
 import {
   DndContext,
@@ -75,9 +73,8 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { draftService } from '../services/draftService';
 import { Draft, ConversationEntry, GenerateContentRequest, ContentGenerationResponse } from '../types/draft.types';
-import GapReviewPanel from '../components/GapReviewPanel';
+import ReviewPipelinePanel from '../components/ReviewPipelinePanel';
 import HistoryPanel from '../components/HistoryPanel';
-import ConsistencyPanel from '../components/ConsistencyPanel';
 import TocComparePanel from '../components/TocComparePanel';
 import TocEditor from '../components/TocEditor';
 
@@ -92,10 +89,12 @@ interface TabPanelProps {
   children?: React.ReactNode;
   index: number;
   value: number;
+  // Edge-to-edge: drop the horizontal padding and cancel the Container gutter (used for the Review tab).
+  fullBleed?: boolean;
 }
 
 function TabPanel(props: TabPanelProps) {
-  const { children, value, index, ...other } = props;
+  const { children, value, index, fullBleed, ...other } = props;
 
   return (
     <div
@@ -105,7 +104,17 @@ function TabPanel(props: TabPanelProps) {
       aria-labelledby={`draft-tab-${index}`}
       {...other}
     >
-      {value === index && <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>{children}</Box>}
+      {value === index && (
+        <Box
+          sx={
+            fullBleed
+              ? { py: { xs: 1, sm: 2 }, px: 0 }
+              : { p: { xs: 1, sm: 2, md: 3 }, maxWidth: 1536, mx: 'auto' }
+          }
+        >
+          {children}
+        </Box>
+      )}
     </div>
   );
 }
@@ -3534,8 +3543,6 @@ const DraftEditPage: React.FC = () => {
     setTabValue(newValue);
   };
 
-  const [consistencyOpen, setConsistencyOpen] = useState(false);
-
   // Save the dropdown-selected TOC back to its own source: 'good' -> working TOC (content preserved by
   // id), 'client'/'benchmark' -> their reference snapshot. Reload after so both views stay in sync.
   const handleSaveSelected = async (toc: Draft['toc']) => {
@@ -3815,40 +3822,7 @@ const DraftEditPage: React.FC = () => {
   }
 
   return (
-    <Container maxWidth="xl">
-      {/* Header Section */}
-      <Paper
-        elevation={0}
-        sx={{
-          py: 1,
-          px: 2,
-          mb: 1,
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          color: 'white',
-          borderRadius: 2,
-        }}
-      >
-        <Box display="flex" alignItems="center" gap={2}>
-          <Button
-            startIcon={<ArrowBack />}
-            onClick={() => navigate('/drafts')}
-            size="small"
-            sx={{
-              color: 'white',
-              border: '1px solid rgba(255,255,255,0.3)',
-              '&:hover': {
-                bgcolor: 'rgba(255,255,255,0.1)',
-              },
-            }}
-          >
-            Back
-          </Button>
-          <Typography variant="body1" component="h1" fontWeight={700} noWrap>
-            {draft.metadata.title}
-          </Typography>
-        </Box>
-      </Paper>
-
+    <Container maxWidth={false} disableGutters sx={{ px: 0 }}>
       {/* Tabs Section */}
       <Paper
         elevation={0}
@@ -3909,34 +3883,46 @@ const DraftEditPage: React.FC = () => {
             },
           }}
         >
+          {/* Explicit `value` per tab so hiding the Content Generation tab (review drafts) doesn't
+              shift the others' indices. Values map 1:1 to the TabPanel index numbers below. */}
           <Tab
+            value={0}
             icon={<Assessment />}
             iconPosition="start"
             label="Overview"
           />
           <Tab
+            value={1}
             icon={<Description />}
             iconPosition="start"
             label="Table of Contents"
           />
+          {/* New policies generate content here; review policies build content section-by-section in
+              the Review tab, so Content Generation is hidden for them. */}
+          {!draft.metadata.review_mode && (
+            <Tab
+              value={2}
+              icon={<EditNote />}
+              iconPosition="start"
+              label="Content Generation"
+            />
+          )}
+          {draft.metadata.review_mode && (
+            <Tab
+              value={4}
+              icon={<Source />}
+              iconPosition="start"
+              label="Review"
+            />
+          )}
           <Tab
-            icon={<EditNote />}
-            iconPosition="start"
-            label="Content Generation"
-          />
-          <Tab
+            value={3}
             icon={<Visibility />}
             iconPosition="start"
             label="Export & Preview"
           />
-          {draft.metadata.review_mode && (
-            <Tab
-              icon={<Source />}
-              iconPosition="start"
-              label="Gap Review"
-            />
-          )}
           <Tab
+            value={5}
             icon={<History />}
             iconPosition="start"
             label="History"
@@ -3951,15 +3937,6 @@ const DraftEditPage: React.FC = () => {
               Draft Overview
             </Typography>
             <Box display="flex" gap={1}>
-              <Button
-                variant="outlined"
-                size="small"
-                startIcon={<Rule sx={{ fontSize: 14 }} />}
-                onClick={() => setConsistencyOpen(true)}
-                sx={{ textTransform: 'none', px: 1.5, py: 0.5, fontWeight: 600, fontSize: '0.7rem', minHeight: 0, borderColor: '#667eea', color: '#667eea' }}
-              >
-                Consistency check
-              </Button>
               <Button
                 variant="contained"
                 size="small"
@@ -4627,13 +4604,8 @@ const DraftEditPage: React.FC = () => {
       </TabPanel>
 
       {draft.metadata.review_mode && (
-        <TabPanel value={tabValue} index={4}>
-          {draft.metadata.toc_reconciliation_note && (
-            <Alert severity="info" sx={{ mb: 2 }}>
-              {draft.metadata.toc_reconciliation_note}
-            </Alert>
-          )}
-          <GapReviewPanel
+        <TabPanel value={tabValue} index={4} fullBleed>
+          <ReviewPipelinePanel
             draftId={draft.id}
             toc={currentToc}
             onContentApplied={(topicId, subtopicId, content) => {
@@ -4644,12 +4616,12 @@ const DraftEditPage: React.FC = () => {
                     ...t,
                     subtopics: t.subtopics.map(s =>
                       s.subtopic_id === subtopicId
-                        ? { ...s, content, gap_status: 'applied' as const }
+                        ? { ...s, content }
                         : s
                     ),
                   };
                 }
-                return { ...t, content, gap_status: 'applied' as const };
+                return { ...t, content };
               }));
               // The Content Generation tab renders from centralized state (keyed by item id),
               // not from currentToc — mirror a normal save so it doesn't show stale content.
@@ -4661,36 +4633,13 @@ const DraftEditPage: React.FC = () => {
                 updateSelectedItem({ ...centralizedState.selectedItem, content });
               }
             }}
-            onReportGenerated={(topicId, subtopicId, report) => {
-              setCurrentToc(prev => prev.map(t => {
-                if (t.topic_id !== topicId) return t;
-                if (subtopicId) {
-                  return {
-                    ...t,
-                    subtopics: t.subtopics.map(s =>
-                      s.subtopic_id === subtopicId
-                        ? { ...s, gap_report_json: JSON.stringify(report), gap_status: 'assessed' as const }
-                        : s
-                    ),
-                  };
-                }
-                return { ...t, gap_report_json: JSON.stringify(report), gap_status: 'assessed' as const };
-              }));
-            }}
           />
         </TabPanel>
       )}
 
-      <TabPanel value={tabValue} index={draft.metadata.review_mode ? 5 : 4}>
+      <TabPanel value={tabValue} index={5}>
         <HistoryPanel draftId={draft.id} onRestored={() => window.location.reload()} />
       </TabPanel>
-
-      <ConsistencyPanel
-        draftId={draft.id}
-        open={consistencyOpen}
-        onClose={() => setConsistencyOpen(false)}
-        initialReportJson={draft.metadata.consistency_report_json}
-      />
 
       {/* Professional Success Notification */}
       <Snackbar

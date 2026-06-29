@@ -21,6 +21,8 @@ export interface TOCSubtopic {
   conversation_history: ConversationEntry[];
   gap_report_json?: string | null;
   gap_status?: 'pending' | 'assessed' | 'applied';
+  baseline_content?: string;
+  review_step?: 'pending' | 'benchmark' | 'regulation' | 'review' | 'closed';
   benchmark_match?: string | null;
 }
 
@@ -35,6 +37,8 @@ export interface TOCTopic {
   subtopics: TOCSubtopic[];
   gap_report_json?: string | null;
   gap_status?: 'pending' | 'assessed' | 'applied';
+  baseline_content?: string;
+  review_step?: 'pending' | 'benchmark' | 'regulation' | 'review' | 'closed';
   added_from_benchmark?: boolean;
   benchmark_match?: string | null;
   reconcile_note?: string | null;
@@ -67,6 +71,7 @@ export interface DraftMetadata {
   good_toc_json?: string | null;
   good_toc_basis_json?: string | null;
   toc_approved?: boolean;
+  content_mapped?: boolean;
 }
 
 // A lightweight TOC structure (titles only) used for the extracted/good preview columns and adoption.

@@ -209,7 +209,7 @@ const LoginPage: React.FC = () => {
           align="center"
           sx={{ mt: 3 }}
         >
-          © 2025 ADA Project. All rights reserved.
+          © 2026 ADA Tool. All rights reserved.
         </Typography>
       </Box>
     </Container>

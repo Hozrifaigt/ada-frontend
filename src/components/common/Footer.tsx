@@ -33,7 +33,7 @@ const Footer: React.FC = () => {
             letterSpacing: '0.5px'
           }}
         >
-          Developed internally by GT • All rights reserved © 2025
+          Developed internally by GT • All rights reserved © 2026
         </Typography>
       </Box>
     </Box>

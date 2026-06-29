@@ -424,5 +424,112 @@ export const draftService = {
     return response.data;
   },
 
+  // ===== Content redistribution (map original client content → current Good TOC) =====
+
+  // Propose how the client's original content maps into the current Good TOC (read-only, editable).
+  async proposeRedistribution(
+    draftId: string
+  ): Promise<{
+    sources: { id: number; title: string; content: string; level: 'topic' | 'subtopic' }[];
+    targets: { key: string; topic_id: string; subtopic_id: string | null; title: string; level: 'topic' | 'subtopic'; current_content: string }[];
+    assignments: Record<string, string>; // source id (string) -> target key | "unassigned"
+  }> {
+    const response = await longTimeoutClient.post(`/api/v1/drafts/${draftId}/redistribute/propose`, {});
+    return response.data;
+  },
+
+  // Commit the final structure (renames/adds/removes) + content+baseline from the redistribution editor.
+  async commitRedistribution(
+    draftId: string,
+    sections: { level: 'topic' | 'subtopic'; id: string; title: string; content: string; include: boolean }[]
+  ): Promise<{ success: boolean; draft: Draft }> {
+    const response = await longTimeoutClient.post(`/api/v1/drafts/${draftId}/redistribute/commit`, { sections });
+    return response.data;
+  },
+
+  // Commit the reviewer-confirmed redistribution (sets content + baseline for each section).
+  async applyRedistribution(
+    draftId: string,
+    sections: { topic_id: string; subtopic_id: string | null; content: string }[]
+  ): Promise<{ success: boolean; draft: Draft }> {
+    const response = await longTimeoutClient.post(`/api/v1/drafts/${draftId}/redistribute/apply`, { sections });
+    return response.data;
+  },
+
+  // ===== Per-section review pipeline (review_mode drafts: benchmark → law → close) =====
+
+  // Step 1: benchmark gap assessment for one section → baseline + benchmark + structured findings + as-is.
+  async reviewBenchmark(
+    draftId: string,
+    topicId: string,
+    subtopicId?: string
+  ): Promise<{
+    topic_id: string; subtopic_id: string | null;
+    baseline_content: string; benchmark_content: string; benchmark_match: string | null;
+    findings: import('../types/draft.types').GapFinding[]; as_is_suggestion: string; message: string;
+  }> {
+    const qs = subtopicId ? `?subtopic_id=${encodeURIComponent(subtopicId)}` : '';
+    const response = await longTimeoutClient.post(
+      `/api/v1/drafts/${draftId}/topics/${topicId}/review/benchmark${qs}`, {}
+    );
+    return response.data;
+  },
+
+  // Step 2: law/regulation check for one section (RAG) → {applies, extract, suggestion}.
+  async reviewRegulation(
+    draftId: string,
+    topicId: string,
+    subtopicId?: string
+  ): Promise<{ applies: boolean; extract: string; suggestion: string; topic_id: string; subtopic_id: string | null; message: string }> {
+    const qs = subtopicId ? `?subtopic_id=${encodeURIComponent(subtopicId)}` : '';
+    const response = await longTimeoutClient.post(
+      `/api/v1/drafts/${draftId}/topics/${topicId}/review/regulation${qs}`, {}
+    );
+    return response.data;
+  },
+
+  // Persist reviewer-approved content for a section and advance its review_step.
+  async reviewApply(
+    draftId: string,
+    topicId: string,
+    content: string,
+    step?: 'benchmark' | 'regulation' | 'review',
+    subtopicId?: string
+  ): Promise<{ content: string; summary: string; word_count: number; review_step: string; message: string }> {
+    const response = await longTimeoutClient.post(
+      `/api/v1/drafts/${draftId}/topics/${topicId}/review/apply`,
+      { content, step, subtopic_id: subtopicId }
+    );
+    return response.data;
+  },
+
+  // Bank a content-ready section (review_step='closed'), or reopen it.
+  async reviewClose(
+    draftId: string,
+    topicId: string,
+    subtopicId?: string,
+    reopen?: boolean
+  ): Promise<{ topic_id: string; subtopic_id: string | null; review_step: string; message: string }> {
+    const response = await apiClient.post(
+      `/api/v1/drafts/${draftId}/topics/${topicId}/review/close`,
+      { subtopic_id: subtopicId, reopen: !!reopen }
+    );
+    return response.data;
+  },
+
+  // Per-section review chatbot → {reply, proposed_content}. proposed_content is applied via reviewApply.
+  async reviewChat(
+    draftId: string,
+    topicId: string,
+    message: string,
+    subtopicId?: string
+  ): Promise<{ reply: string; proposed_content: string | null; topic_id: string; subtopic_id: string | null }> {
+    const response = await longTimeoutClient.post(
+      `/api/v1/drafts/${draftId}/topics/${topicId}/review/chat`,
+      { message, subtopic_id: subtopicId }
+    );
+    return response.data;
+  },
+
   // Policy type methods removed - no longer using Excel templates
 };

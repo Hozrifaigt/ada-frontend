@@ -19,6 +19,7 @@ import { CheckCircle, UploadFile, Lock, ContentPaste } from '@mui/icons-material
 import { draftService } from '../services/draftService';
 import { DraftMetadata, TOCTopic, TOCSubtopic, TocStructureItem } from '../types/draft.types';
 import TocEditor from './TocEditor';
+import RedistributeButton from './RedistributeButton';
 
 interface TocComparePanelProps {
   draftId: string;
@@ -189,22 +190,43 @@ const TocComparePanel: React.FC<TocComparePanelProps> = ({ draftId, metadata, cu
         <Typography variant="subtitle1" fontWeight={700} sx={{ flex: 1 }}>
           Build the perfect Table of Contents
         </Typography>
-        {metadata.toc_approved ? (
-          <Chip icon={<CheckCircle sx={{ fontSize: 16 }} />} label="TOC approved" size="small" sx={{ color: '#059669', backgroundColor: '#ecfdf5', fontWeight: 600 }} />
-        ) : (
-          <Tooltip title="Lock this as the agreed structure before per-section content work">
-            <Button
-              variant="contained"
-              size="small"
-              startIcon={busy === 'approve' ? <CircularProgress size={14} color="inherit" /> : <Lock sx={{ fontSize: 16 }} />}
-              disabled={busy === 'approve'}
-              onClick={handleApprove}
-              sx={{ background: PURPLE_GRADIENT, textTransform: 'none', fontWeight: 600, color: '#fff' }}
-            >
-              Approve TOC &amp; continue
-            </Button>
-          </Tooltip>
-        )}
+        {/* Workflow gate: need a Good TOC to map; need a mapping before you can approve. */}
+        {(() => {
+          const hasGoodToc = (currentToc?.length || 0) > 0;
+          const canApprove = hasGoodToc && !!metadata.content_mapped;
+          const approveTip = !hasGoodToc
+            ? 'Build the Good TOC first'
+            : !metadata.content_mapped
+            ? 'Map client content into the sections first'
+            : 'Lock this as the agreed structure before per-section review';
+          return (
+            <>
+              <Tooltip title={hasGoodToc ? 'Map the client content into the Good TOC sections' : 'Build the Good TOC first'}>
+                <span>
+                  <RedistributeButton draftId={draftId} onApplied={onChanged} disabled={!hasGoodToc} />
+                </span>
+              </Tooltip>
+              {metadata.toc_approved ? (
+                <Chip icon={<CheckCircle sx={{ fontSize: 16 }} />} label="TOC approved" size="small" sx={{ color: '#059669', backgroundColor: '#ecfdf5', fontWeight: 600 }} />
+              ) : (
+                <Tooltip title={approveTip}>
+                  <span>
+                    <Button
+                      variant="contained"
+                      size="small"
+                      startIcon={busy === 'approve' ? <CircularProgress size={14} color="inherit" /> : <Lock sx={{ fontSize: 16 }} />}
+                      disabled={busy === 'approve' || !canApprove}
+                      onClick={handleApprove}
+                      sx={{ background: PURPLE_GRADIENT, textTransform: 'none', fontWeight: 600, color: '#fff', '&.Mui-disabled': { color: '#fff', opacity: 0.55 } }}
+                    >
+                      Approve TOC &amp; continue
+                    </Button>
+                  </span>
+                </Tooltip>
+              )}
+            </>
+          );
+        })()}
       </Box>
 
       {error && <Alert severity="error" sx={{ mb: 1.5 }} onClose={() => setError(null)}>{error}</Alert>}
