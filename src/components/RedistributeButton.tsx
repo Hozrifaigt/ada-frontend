@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import {
+  Alert,
   Button,
   Box,
   Typography,
@@ -81,6 +82,7 @@ const RedistributeButton: React.FC<Props> = ({ draftId, onApplied, size = 'small
   const [savedKeys, setSavedKeys] = useState<string[]>([]);
   const [selectedKey, setSelectedKey] = useState<string>(UNPLACED_VIEW);
   const [error, setError] = useState<string | null>(null);
+  const [originalMissing, setOriginalMissing] = useState(false);
   const newCounter = useRef(0);
 
   const openDialog = async () => {
@@ -90,6 +92,7 @@ const RedistributeButton: React.FC<Props> = ({ draftId, onApplied, size = 'small
     setTargets([]);
     try {
       const p = await draftService.proposeRedistribution(draftId);
+      setOriginalMissing(!!p.original_missing);
       const asg = { ...p.assignments };
       const tg: RTarget[] = p.targets.map((t) => ({
         key: t.key, topic_id: t.topic_id, subtopic_id: t.subtopic_id, title: t.title, level: t.level, isNew: false,
@@ -252,6 +255,12 @@ const RedistributeButton: React.FC<Props> = ({ draftId, onApplied, size = 'small
         <DialogTitle sx={{ fontWeight: 700 }}>Map client content into sections</DialogTitle>
         <DialogContent dividers sx={{ p: 0 }}>
           {error && <Typography variant="body2" sx={{ color: '#b91c1c', p: 2, pb: 0 }}>{error}</Typography>}
+          {originalMissing && (
+            <Alert severity="warning" sx={{ m: 2, mb: 0 }}>
+              The original upload snapshot is missing for this draft, so the mapping sources were taken
+              from the current working copy — review the content carefully before saving.
+            </Alert>
+          )}
           {loading ? (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 3 }}>
               <CircularProgress size={20} />

@@ -433,6 +433,7 @@ export const draftService = {
     sources: { id: number; title: string; content: string; level: 'topic' | 'subtopic' }[];
     targets: { key: string; topic_id: string; subtopic_id: string | null; title: string; level: 'topic' | 'subtopic'; current_content: string; added_from_benchmark?: boolean }[];
     assignments: Record<string, string>; // source id (string) -> target key | "unassigned"
+    original_missing?: boolean; // no version-0 snapshot — sources came from the LIVE draft (degraded)
   }> {
     const response = await longTimeoutClient.post(`/api/v1/drafts/${draftId}/redistribute/propose`, {});
     return response.data;
@@ -482,7 +483,7 @@ export const draftService = {
     draftId: string,
     topicId: string,
     subtopicId?: string
-  ): Promise<{ applies: boolean; extract: string; suggestion: string; has_regulations: boolean; topic_id: string; subtopic_id: string | null; message: string }> {
+  ): Promise<{ applies: boolean; extract: string; suggestion: string; has_regulations: boolean; check_failed?: boolean; topic_id: string; subtopic_id: string | null; message: string }> {
     const qs = subtopicId ? `?subtopic_id=${encodeURIComponent(subtopicId)}` : '';
     const response = await longTimeoutClient.post(
       `/api/v1/drafts/${draftId}/topics/${topicId}/review/regulation${qs}`, {}

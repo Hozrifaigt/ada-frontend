@@ -68,12 +68,16 @@ function toTocTopics(raw: any[]): TOCTopic[] {
   return out;
 }
 
-// TOCTopic[] → titles-only TocStructureItem[] for the snapshot save.
+// TOCTopic[] → TocStructureItem[] for the snapshot save. Ids are included so a RENAMED section
+// keeps its content/baseline/review state (the backend matches by id first, title second).
 function toStructureItems(toc: TOCTopic[]): TocStructureItem[] {
   return (toc || [])
     .map(t => ({
+      id: t.topic_id,
       title: (t.topic || '').trim(),
-      subtopics: (t.subtopics || []).map(s => (s.topic || '').trim()).filter(Boolean),
+      subtopics: (t.subtopics || [])
+        .map(s => ({ id: s.subtopic_id, title: (s.topic || '').trim() }))
+        .filter(s => s.title),
     }))
     .filter(t => t.title);
 }
@@ -302,7 +306,9 @@ const TocComparePanel: React.FC<TocComparePanelProps> = ({ draftId, metadata, cu
             <Box key={i} sx={{ mb: 0.5 }}>
               <Typography variant="caption" fontWeight={600}>{i + 1}. {t.title}</Typography>
               {(t.subtopics || []).map((s, j) => (
-                <Typography key={j} variant="caption" sx={{ display: 'block', pl: 1.5, color: '#64748b' }}>{i + 1}.{j + 1} {s}</Typography>
+                <Typography key={j} variant="caption" sx={{ display: 'block', pl: 1.5, color: '#64748b' }}>
+                  {i + 1}.{j + 1} {typeof s === 'string' ? s : s.title}
+                </Typography>
               ))}
             </Box>
           ))}

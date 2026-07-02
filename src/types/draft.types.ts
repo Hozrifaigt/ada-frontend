@@ -79,10 +79,13 @@ export interface DraftMetadata {
   content_mapped?: boolean;
 }
 
-// A lightweight TOC structure (titles only) used for the extracted/good preview columns and adoption.
+// A lightweight TOC structure used for the extracted/good preview columns and adoption.
+// Ids (when present) let the backend preserve a section's content across a RENAME —
+// title-only entries (extract/paste previews) still work via title matching.
 export interface TocStructureItem {
+  id?: string;
   title: string;
-  subtopics?: string[];
+  subtopics?: (string | { id?: string; title: string })[];
 }
 
 export interface LibraryPolicy {

@@ -83,6 +83,8 @@ interface RegResult {
   suggestion: string;
   // false = no regulation source loaded for this draft (distinct from "checked, none apply").
   has_regulations: boolean;
+  // true = the check itself failed (LLM output unparseable) — NOT the same as "none apply".
+  check_failed?: boolean;
 }
 
 interface ChatMsg {
@@ -197,16 +199,18 @@ const ReviewPipelinePanel: React.FC<ReviewPipelinePanelProps> = ({ draftId, toc,
   const [matchOverrides, setMatchOverrides] = useState<Record<string, string>>({});
   const pinnedOf = (u: Unit | null): string => (u ? (matchOverrides[u.key] ?? u.pinned) : '');
 
-  // The section's WORKING content starts empty until the reviewer actually produces something: an
-  // untouched section (still 'pending') whose content merely mirrors the frozen client baseline — or
-  // that has no baseline at all — shows an empty editor. The client's text lives in CLIENT BASELINE;
-  // "current content" only fills once gaps are fixed / benchmark applied / edits saved.
+  // The section's WORKING content starts empty until the reviewer actually produces something:
+  // content that merely mirrors the frozen client baseline is "nothing produced yet", no matter how
+  // far the pipeline step advanced (running a benchmark alone moves pending→benchmark without
+  // changing any text). The client's text lives in CLIENT BASELINE; "current content" only fills
+  // once gaps are fixed / benchmark applied / edits saved. Closed sections always show their real
+  // content — that's what exports.
   const workingContentOf = (u: Unit | null): string => {
     if (!u) return '';
     const c = (u.content || '').trim();
     if (!c) return '';
     const step = stepOverrides[u.key] ?? u.reviewStep;
-    if (step === 'pending' && c === (u.baseline || '').trim()) return '';
+    if (step !== 'closed' && c === (u.baseline || '').trim()) return '';
     return u.content;
   };
 
@@ -309,7 +313,7 @@ const ReviewPipelinePanel: React.FC<ReviewPipelinePanelProps> = ({ draftId, toc,
       });
       setPreview({ content: r.content, step: 'benchmark', label: `Fix gaps (${ids.length} selected)` });
     } catch (e: any) {
-      setError(e?.message || 'Could not generate the tweak');
+      setError(e?.response?.data?.detail || e?.message || 'Could not generate the tweak');
     } finally {
       setBusy(null);
     }
@@ -586,7 +590,14 @@ const ReviewPipelinePanel: React.FC<ReviewPipelinePanelProps> = ({ draftId, toc,
                       value={pinnedOf(selected)}
                       disabled={!!busy || locked || benchUnits.length === 0}
                       onChange={(e) => savePinnedMatch(e.target.value as string)}
-                      renderValue={(v) => (v ? String(v) : 'Auto (best match)')}
+                      renderValue={(v) => {
+                        // Pins are qualified as "parent|name" so duplicate subtopic titles (e.g.
+                        // "Scope" under several topics) resolve to the right section.
+                        if (!v) return 'Auto (best match)';
+                        const s = String(v);
+                        const i = s.indexOf('|');
+                        return i >= 0 ? `${s.slice(i + 1)} — ${s.slice(0, i)}` : s;
+                      }}
                       sx={{ minWidth: 260, fontSize: '0.8rem' }}
                     >
                       <MenuItem value="">
@@ -595,7 +606,7 @@ const ReviewPipelinePanel: React.FC<ReviewPipelinePanelProps> = ({ draftId, toc,
                       {benchUnits.map((bu, i) => (
                         <MenuItem
                           key={`${bu.parent || ''}|${bu.name}|${i}`}
-                          value={bu.name}
+                          value={bu.level === 'subtopic' && bu.parent ? `${bu.parent}|${bu.name}` : bu.name}
                           sx={{ pl: bu.level === 'subtopic' ? 4 : 2, fontWeight: bu.level === 'topic' ? 600 : 400, fontSize: '0.8rem' }}
                         >
                           {bu.name}
@@ -789,6 +800,11 @@ const ReviewPipelinePanel: React.FC<ReviewPipelinePanelProps> = ({ draftId, toc,
                         No regulations loaded for this draft. Use <b>Upload regulations</b> above to attach
                         regulation files, then run the check.
                       </Typography>
+                    ) : reg.check_failed ? (
+                      <Typography variant="body2" sx={{ fontSize: '0.8rem', color: '#b45309', my: 0.5 }}>
+                        The regulation check didn't complete — this is <b>not</b> a "no regulation applies"
+                        result. Click <b>Re-check regulations</b> to try again.
+                      </Typography>
                     ) : reg.applies ? (
                       <>
                         {reg.extract && (
@@ -805,13 +821,17 @@ const ReviewPipelinePanel: React.FC<ReviewPipelinePanelProps> = ({ draftId, toc,
                           size="small"
                           variant="contained"
                           disabled={!reg.suggestion || !!busy || locked}
-                          onClick={() =>
+                          onClick={() => {
+                            // Embed into the section's REAL text: the editor may be showing the empty
+                            // seed for an untouched section while the stored content still holds the
+                            // client's text — never let the clause replace it.
+                            const base = (editContent.trim() || selected.content || selected.baseline || '').trim();
                             setPreview({
-                              content: `${editContent.trim()}\n\n${reg.suggestion}`.trim(),
+                              content: `${base}\n\n${reg.suggestion}`.trim(),
                               step: 'regulation',
                               label: 'Embed regulation clause',
-                            })
-                          }
+                            });
+                          }}
                           sx={{ ...GRADIENT_BTN, mt: 0.5 }}
                         >
                           Embed clause
@@ -940,7 +960,7 @@ const ReviewPipelinePanel: React.FC<ReviewPipelinePanelProps> = ({ draftId, toc,
           <CheckCircle sx={{ fontSize: 13, color: '#10b981' }} /> CURRENT CONTENT
         </Typography>
         <Typography variant="body2" sx={{ fontSize: '0.78rem', color: '#1e293b', whiteSpace: 'pre-wrap', mt: 0.5, mb: 1.5 }}>
-          {editContent || '(nothing confirmed yet — apply a benchmark/regulation change or edit in Finalize)'}
+          {editContent || '(nothing confirmed yet — the client baseline below is kept for export until you apply or save changes here)'}
         </Typography>
 
         <Divider sx={{ my: 1 }} />

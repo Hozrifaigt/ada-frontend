@@ -222,6 +222,11 @@ const NewDraftPage: React.FC = () => {
 
   const handleRegulationsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
+    const bad = files.find((f) => !f.name.toLowerCase().endsWith('.docx'));
+    if (bad) {
+      setError(`Regulation files must be Word (.docx) documents — "${bad.name}" is not supported.`);
+      return;
+    }
     setError(null);
     setRegulationsFiles(files);
   };
@@ -534,7 +539,7 @@ const NewDraftPage: React.FC = () => {
 
                         {/* Current Regulations (optional) */}
                         <Grid item xs={12} md={6}>
-                          <input type="file" multiple ref={regulationsRef} style={{ display: 'none' }} onChange={handleRegulationsChange} />
+                          <input type="file" accept=".docx" multiple ref={regulationsRef} style={{ display: 'none' }} onChange={handleRegulationsChange} />
                           <Box
                             onClick={() => regulationsRef.current?.click()}
                             sx={{
