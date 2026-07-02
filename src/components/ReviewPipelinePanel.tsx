@@ -8,6 +8,7 @@ import {
   Checkbox,
   TextField,
   CircularProgress,
+  LinearProgress,
   Alert,
   Divider,
   Stepper,
@@ -15,6 +16,7 @@ import {
   StepButton,
   Select,
   MenuItem,
+  Collapse,
 } from '@mui/material';
 import {
   LibraryBooks,
@@ -22,6 +24,7 @@ import {
   CheckCircle,
   Lock,
   Send,
+  Tune,
   UploadFile,
 } from '@mui/icons-material';
 import { draftService } from '../services/draftService';
@@ -73,6 +76,11 @@ const TYPE_LABEL: Record<string, string> = { missing: 'Missing', non_compliant: 
 
 // The per-section timeline.
 const STEPS = ['Benchmark', 'Regulation', 'Finalize'];
+// Short in-progress label per pipeline step, shown in the section list so the reviewer can see
+// where every section stands without opening it.
+const STEP_SHORT: Record<ReviewStep, string> = {
+  pending: '', benchmark: 'benchmark', regulation: 'regulation', review: 'editing', closed: 'done',
+};
 // How many steps are complete, from the persisted review_step.
 const completedThrough = (s: ReviewStep): number =>
   s === 'pending' ? 0 : s === 'benchmark' ? 1 : s === 'closed' ? 3 : 2; // regulation/review → 2
@@ -194,6 +202,9 @@ const ReviewPipelinePanel: React.FC<ReviewPipelinePanelProps> = ({ draftId, toc,
   // Manual benchmark override (Review tab): reviewer-supplied benchmark text for the selected section.
   const [manualOpen, setManualOpen] = useState(false);
   const [manualBench, setManualBench] = useState('');
+  // Match controls (picker + paste-text) are tucked behind "Adjust match" — most sections match fine
+  // automatically, so the default view stays calm. Auto-opens when a run finds no benchmark.
+  const [matchOpen, setMatchOpen] = useState(false);
   // Benchmark topic/subtopic list for the match picker + local pin overrides (avoid a draft reload).
   const [benchUnits, setBenchUnits] = useState<BenchUnit[]>([]);
   const [matchOverrides, setMatchOverrides] = useState<Record<string, string>>({});
@@ -233,6 +244,7 @@ const ReviewPipelinePanel: React.FC<ReviewPipelinePanelProps> = ({ draftId, toc,
     setError(null);
     setManualOpen(false);
     setManualBench('');
+    setMatchOpen(false);
     // Open the timeline at the section's current point in the pipeline.
     setActiveStep(Math.min(completedThrough(selected?.reviewStep || 'pending'), 2));
   }, [selectedKey]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -250,6 +262,8 @@ const ReviewPipelinePanel: React.FC<ReviewPipelinePanelProps> = ({ draftId, toc,
     try {
       const r = await draftService.reviewBenchmark(draftId, selected.topicId, selected.subtopicId);
       setBenchmark(r);
+      // Nothing matched → surface the match controls so the reviewer can pick one.
+      if (!r.benchmark_content) setMatchOpen(true);
       // Default every found gap to ticked — the reviewer unticks the ones they don't accept.
       const checks: Record<string, boolean> = {};
       r.findings.forEach((f) => { checks[f.id] = true; });
@@ -428,6 +442,14 @@ const ReviewPipelinePanel: React.FC<ReviewPipelinePanelProps> = ({ draftId, toc,
             sx={{ height: 20, fontSize: '0.65rem', bgcolor: '#ecfdf5', color: '#047857' }}
           />
         </Box>
+        <LinearProgress
+          variant="determinate"
+          value={units.length ? (closedCount / units.length) * 100 : 0}
+          sx={{
+            mx: 1, mb: 0.75, height: 5, borderRadius: 3, bgcolor: '#e2e8f0',
+            '& .MuiLinearProgress-bar': { bgcolor: '#10b981', borderRadius: 3 },
+          }}
+        />
         {units.map((u) => {
           const pv = provOf(u);
           const isClosed = stepOf(u) === 'closed';
@@ -466,6 +488,11 @@ const ReviewPipelinePanel: React.FC<ReviewPipelinePanelProps> = ({ draftId, toc,
               </Typography>
               {isClosed ? (
                 <CheckCircle sx={{ fontSize: 15, color: '#10b981', flexShrink: 0 }} />
+              ) : stepOf(u) !== 'pending' ? (
+                // In progress: show WHERE it is in the pipeline (provenance stays visible via the dot).
+                <Typography variant="caption" sx={{ color: '#4338ca', fontWeight: 600, flexShrink: 0 }}>
+                  {STEP_SHORT[stepOf(u)]}
+                </Typography>
               ) : (
                 <Typography variant="caption" sx={{ color: PROV[pv].color, fontWeight: 600, flexShrink: 0 }}>
                   {PROV[pv].label}
@@ -482,6 +509,10 @@ const ReviewPipelinePanel: React.FC<ReviewPipelinePanelProps> = ({ draftId, toc,
               <Typography variant="caption" sx={{ color: '#94a3b8' }}>{PROV[p].label}</Typography>
             </Box>
           ))}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.4 }}>
+            <Typography variant="caption" sx={{ color: '#4338ca', fontWeight: 600 }}>step</Typography>
+            <Typography variant="caption" sx={{ color: '#94a3b8' }}>= in progress</Typography>
+          </Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.4 }}>
             <CheckCircle sx={{ fontSize: 12, color: '#10b981' }} />
             <Typography variant="caption" sx={{ color: '#94a3b8' }}>done</Typography>
@@ -557,7 +588,7 @@ const ReviewPipelinePanel: React.FC<ReviewPipelinePanelProps> = ({ draftId, toc,
             {/* STEP 1 — BENCHMARK */}
             {activeStep === 0 && (
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
                   <Button
                     size="small"
                     variant={benchmark ? 'outlined' : 'contained'}
@@ -568,6 +599,24 @@ const ReviewPipelinePanel: React.FC<ReviewPipelinePanelProps> = ({ draftId, toc,
                   >
                     {busy === 'benchmark' ? 'Reviewing…' : benchmark ? 'Re-run benchmark' : 'Run benchmark review'}
                   </Button>
+                  {benchmark?.benchmark_source === 'manual' && (
+                    <Chip size="small" label="Manual text in use" sx={{ height: 20, fontSize: '0.65rem', bgcolor: '#eef2ff', color: '#4338ca' }} />
+                  )}
+                  {benchmark?.benchmark_source === 'pinned' && (
+                    <Chip size="small" label={`Pinned: ${benchmark.benchmark_match}`} sx={{ height: 20, fontSize: '0.65rem', bgcolor: '#eef2ff', color: '#4338ca' }} />
+                  )}
+                  {benchmark?.benchmark_source === 'none' && (
+                    <Chip size="small" label="No benchmark matched" sx={{ height: 20, fontSize: '0.65rem', bgcolor: '#fef2f2', color: '#b91c1c' }} />
+                  )}
+                  <Box sx={{ flex: 1 }} />
+                  <Button
+                    size="small" variant="text" startIcon={<Tune sx={{ fontSize: 15 }} />}
+                    disabled={locked}
+                    onClick={() => setMatchOpen((o) => !o)}
+                    sx={{ textTransform: 'none', color: '#64748b', fontWeight: 600 }}
+                  >
+                    {matchOpen ? 'Hide match options' : 'Adjust match'}
+                  </Button>
                 </Box>
 
                 {!hasBaselineContent && (
@@ -576,10 +625,10 @@ const ReviewPipelinePanel: React.FC<ReviewPipelinePanelProps> = ({ draftId, toc,
                   </Alert>
                 )}
 
-                {/* Benchmark match — the reviewer picks which benchmark topic/subtopic this section is
-                    tested against ("Auto" = best match). Overrides a wrong auto-match without any typing;
-                    pasting custom benchmark text stays available as a secondary option below. */}
-                <Box>
+                {/* Match controls (collapsed by default — most sections auto-match fine): pick which
+                    benchmark topic/subtopic this section is tested against, or paste custom text. */}
+                <Collapse in={matchOpen}>
+                <Box sx={{ p: 1.25, bgcolor: '#f8fafc', border: '1px solid #eef0f6', borderRadius: 1.5 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
                     <Typography variant="caption" sx={{ fontWeight: 700, color: '#475569' }}>
                       BENCHMARK MATCH
@@ -616,15 +665,6 @@ const ReviewPipelinePanel: React.FC<ReviewPipelinePanelProps> = ({ draftId, toc,
                       ))}
                     </Select>
                     {busy === 'match' && <CircularProgress size={14} />}
-                    {benchmark?.benchmark_source === 'manual' && (
-                      <Chip size="small" label="Manual text in use" sx={{ height: 20, fontSize: '0.65rem', bgcolor: '#eef2ff', color: '#4338ca' }} />
-                    )}
-                    {benchmark?.benchmark_source === 'pinned' && (
-                      <Chip size="small" label={`Pinned: ${benchmark.benchmark_match}`} sx={{ height: 20, fontSize: '0.65rem', bgcolor: '#eef2ff', color: '#4338ca' }} />
-                    )}
-                    {benchmark?.benchmark_source === 'none' && (
-                      <Chip size="small" label="No benchmark matched" sx={{ height: 20, fontSize: '0.65rem', bgcolor: '#fef2f2', color: '#b91c1c' }} />
-                    )}
                   </Box>
                   {benchUnits.length === 0 && (
                     <Typography variant="caption" sx={{ color: '#94a3b8' }}>
@@ -678,6 +718,7 @@ const ReviewPipelinePanel: React.FC<ReviewPipelinePanelProps> = ({ draftId, toc,
                     </Box>
                   )}
                 </Box>
+                </Collapse>
 
                 {benchmark && (
                   <Paper variant="outlined" sx={{ p: 1.5, bgcolor: '#fafbff' }}>

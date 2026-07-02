@@ -55,6 +55,8 @@ interface Props {
   draftId: string;
   // Called after a successful save so the parent can reload the draft.
   onApplied: () => void;
+  // Called instead of onApplied after "Save & approve" — lets the parent jump to the Review tab.
+  onApproved?: () => void;
   size?: 'small' | 'medium';
   disabled?: boolean;
   // Show a "Save & approve TOC" action in the dialog (hidden once the TOC is already approved).
@@ -67,7 +69,7 @@ interface Props {
  * each section's content, then Save. Saving rebuilds the Good TOC and sets content + baseline. Lives in the
  * TOC tab; self-contained so the layout can be swapped without touching anything else.
  */
-const RedistributeButton: React.FC<Props> = ({ draftId, onApplied, size = 'small', disabled = false, showApprove = false }) => {
+const RedistributeButton: React.FC<Props> = ({ draftId, onApplied, onApproved, size = 'small', disabled = false, showApprove = false }) => {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -226,7 +228,7 @@ const RedistributeButton: React.FC<Props> = ({ draftId, onApplied, size = 'small
       // approve gate (content_mapped) is satisfied.
       if (approve) await draftService.approveToc(draftId);
       setOpen(false);
-      onApplied();
+      if (approve && onApproved) onApproved(); else onApplied();
     } catch (e: any) {
       setError(e?.response?.data?.detail || (approve ? 'Saved the mapping but could not approve the TOC.' : 'Could not save.'));
     } finally {

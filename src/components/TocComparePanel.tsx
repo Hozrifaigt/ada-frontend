@@ -25,7 +25,8 @@ interface TocComparePanelProps {
   draftId: string;
   metadata: DraftMetadata;
   currentToc: TOCTopic[];
-  onChanged: () => void; // reload the draft after a save/adopt/approve
+  onChanged: () => void; // reload the draft after a save/adopt
+  onApproved?: () => void; // after approval — lets the parent jump straight to the Review tab
 }
 
 type WhichToc = 'client' | 'benchmark' | 'good';
@@ -82,11 +83,47 @@ function toStructureItems(toc: TOCTopic[]): TocStructureItem[] {
     .filter(t => t.title);
 }
 
-const ColumnShell: React.FC<{ title: string; subtitle: string; accent: string; headerAction?: React.ReactNode; children: React.ReactNode }> = ({
-  title, subtitle, accent, headerAction, children,
+// One step of the TOC-stage journey. The gates (Map before Approve, etc.) always existed in the
+// button logic — this strip makes the journey visible instead of discovered via disabled buttons.
+const WorkflowStep: React.FC<{ index: number; label: string; done: boolean; active: boolean; last?: boolean }> = ({
+  index, label, done, active, last,
 }) => (
-  <Paper elevation={0} sx={{ flex: 1, minWidth: 260, border: '1px solid #e2e8f0', borderRadius: 2, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-    <Box sx={{ p: 1.25, px: 1.5, borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc', display: 'flex', alignItems: 'center', gap: 1 }}>
+  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+    <Box
+      sx={{
+        width: 22, height: 22, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        bgcolor: done ? '#ecfdf5' : active ? '#eef2ff' : '#f1f5f9',
+        color: done ? '#059669' : active ? '#4338ca' : '#94a3b8',
+        border: `1px solid ${done ? '#a7f3d0' : active ? '#c7d2fe' : '#e2e8f0'}`,
+        fontSize: '0.7rem', fontWeight: 700, flexShrink: 0,
+      }}
+    >
+      {done ? <CheckCircle sx={{ fontSize: 14 }} /> : index}
+    </Box>
+    <Typography
+      variant="caption"
+      sx={{ fontWeight: active ? 700 : 500, color: done ? '#059669' : active ? '#4338ca' : '#94a3b8', whiteSpace: 'nowrap' }}
+    >
+      {label}
+    </Typography>
+    {!last && <Box sx={{ width: 22, height: '1px', bgcolor: '#e2e8f0', mx: 0.5 }} />}
+  </Box>
+);
+
+// Each column carries its own identity: accent top border + tinted header/body, so Current /
+// Benchmark / Good read as three different things at a glance (no explainer text needed).
+const ColumnShell: React.FC<{
+  title: string; subtitle: string; accent: string; headerTint: string; bodyTint: string;
+  headerAction?: React.ReactNode; children: React.ReactNode;
+}> = ({ title, subtitle, accent, headerTint, bodyTint, headerAction, children }) => (
+  <Paper
+    elevation={0}
+    sx={{
+      flex: 1, minWidth: 260, border: '1px solid #e2e8f0', borderTop: `3px solid ${accent}`,
+      borderRadius: 2, overflow: 'hidden', display: 'flex', flexDirection: 'column', backgroundColor: bodyTint,
+    }}
+  >
+    <Box sx={{ p: 1.25, px: 1.5, borderBottom: '1px solid #e2e8f0', backgroundColor: headerTint, display: 'flex', alignItems: 'center', gap: 1 }}>
       <Box sx={{ flex: 1, minWidth: 0 }}>
         <Typography variant="body2" fontWeight={700} sx={{ color: accent }}>{title}</Typography>
         <Typography variant="caption" color="text.secondary">{subtitle}</Typography>
@@ -97,7 +134,7 @@ const ColumnShell: React.FC<{ title: string; subtitle: string; accent: string; h
   </Paper>
 );
 
-const TocComparePanel: React.FC<TocComparePanelProps> = ({ draftId, metadata, currentToc, onChanged }) => {
+const TocComparePanel: React.FC<TocComparePanelProps> = ({ draftId, metadata, currentToc, onChanged, onApproved }) => {
   const fileRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<TocStructureItem[] | null>(null);
   const [pasteOpen, setPasteOpen] = useState(false);
@@ -111,6 +148,24 @@ const TocComparePanel: React.FC<TocComparePanelProps> = ({ draftId, metadata, cu
   const benchmarkToc = useMemo(
     () => toTocTopics(parseJson(metadata.benchmark_toc_json || metadata.benchmark_topics_json)),
     [metadata.benchmark_toc_json, metadata.benchmark_topics_json]
+  );
+
+  // TOC-stage journey state (drives the workflow strip + the existing button gates).
+  const hasBenchmarkSource = !!(metadata.benchmark_toc_json || metadata.benchmark_topics_json || metadata.benchmark_policy_id);
+  const workflowSteps = [
+    { label: 'Attach benchmark', done: hasBenchmarkSource },
+    { label: 'Build Good TOC', done: (currentToc?.length || 0) > 0 },
+    { label: 'Map client content', done: !!metadata.content_mapped },
+    { label: 'Approve TOC', done: !!metadata.toc_approved },
+  ];
+  const activeStepIdx = workflowSteps.findIndex((s) => !s.done);
+  // Sections/subsections the reconcile added from the benchmark — shown on the Good column header.
+  const addedCount = useMemo(
+    () => (currentToc || []).reduce(
+      (n, t) => n + (t.added_from_benchmark ? 1 : 0) + (t.subtopics || []).filter((s) => s.added_from_benchmark).length,
+      0
+    ),
+    [currentToc]
   );
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -169,7 +224,7 @@ const TocComparePanel: React.FC<TocComparePanelProps> = ({ draftId, metadata, cu
     setBusy('approve'); setError(null);
     try {
       await draftService.approveToc(draftId);
-      onChanged();
+      (onApproved || onChanged)();
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Could not approve the TOC.');
     } finally { setBusy(null); }
@@ -210,6 +265,7 @@ const TocComparePanel: React.FC<TocComparePanelProps> = ({ draftId, metadata, cu
                   <RedistributeButton
                     draftId={draftId}
                     onApplied={onChanged}
+                    onApproved={onApproved}
                     disabled={!hasGoodToc}
                     showApprove={!metadata.toc_approved}
                   />
@@ -238,20 +294,36 @@ const TocComparePanel: React.FC<TocComparePanelProps> = ({ draftId, metadata, cu
         })()}
       </Box>
 
-      {error && <Alert severity="error" sx={{ mb: 1.5 }} onClose={() => setError(null)}>{error}</Alert>}
+      {/* The journey at a glance — done / current / upcoming. */}
+      <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 0.5, mb: 1.5, p: 1, px: 1.5, bgcolor: '#f8fafc', border: '1px solid #eef0f6', borderRadius: 2 }}>
+        {workflowSteps.map((s, i) => (
+          <WorkflowStep key={s.label} index={i + 1} label={s.label} done={s.done} active={i === activeStepIdx} last={i === workflowSteps.length - 1} />
+        ))}
+        <Box sx={{ flex: 1 }} />
+        <Typography variant="caption" sx={{ color: '#94a3b8', whiteSpace: 'nowrap' }}>
+          {metadata.toc_approved ? 'Structure agreed — continue in the Review tab' : 'Approving unlocks the section-by-section review'}
+        </Typography>
+      </Box>
 
-      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-        Drag, edit and save any of the three TOCs below. Use the upload icon on <b>Benchmark TOC</b> to pull a TOC
-        from a file, and <b>Regenerate</b> on <b>Good TOC</b> to re-merge the current Current + Benchmark TOCs.
-      </Typography>
+      {error && <Alert severity="error" sx={{ mb: 1.5 }} onClose={() => setError(null)}>{error}</Alert>}
 
       {/* Three editable TOCs side by side — same drag-and-drop editor as the Table of Contents below */}
       <Box sx={{ display: 'flex', gap: 1.5, flexWrap: { xs: 'wrap', lg: 'nowrap' }, mb: 2, alignItems: 'flex-start' }}>
-        <ColumnShell title="Current TOC" subtitle="The client's policy as uploaded" accent="#475569">
+        <ColumnShell
+          title="Current TOC" subtitle="The client's policy as uploaded"
+          accent="#64748b" headerTint="#f1f5f9" bodyTint="#f8fafc"
+        >
           <TocEditor toc={clientToc} saving={savingCol === 'client'} onSave={(t) => handleSaveColumn('client', t)} />
         </ColumnShell>
         <ColumnShell
-          title="Benchmark TOC" subtitle="From the benchmark" accent="#764ba2"
+          title="Benchmark TOC"
+          subtitle={
+            metadata.benchmark_source === 'library' ? 'From the library benchmark'
+            : metadata.benchmark_source === 'uploaded' ? 'From the uploaded benchmark'
+            : hasBenchmarkSource ? 'From the benchmark'
+            : 'None yet — upload or paste one'
+          }
+          accent="#764ba2" headerTint="#f5f0fa" bodyTint="#fbf9fe"
           headerAction={
             <Box display="flex" alignItems="center">
               <Tooltip title="Paste a TOC as text — the AI converts it and sets it as the Benchmark TOC">
@@ -274,19 +346,30 @@ const TocComparePanel: React.FC<TocComparePanelProps> = ({ draftId, metadata, cu
           <TocEditor toc={benchmarkToc} saving={savingCol === 'benchmark'} onSave={(t) => handleSaveColumn('benchmark', t)} />
         </ColumnShell>
         <ColumnShell
-          title="Good TOC (working)" subtitle="The one you'll approve & build from" accent="#667eea"
+          title="Good TOC (working)" subtitle="The one you'll approve & build from"
+          accent="#667eea" headerTint="#eef2ff" bodyTint="#f8f9ff"
           headerAction={
-            <Tooltip title="Regenerate a fresh Good TOC by re-merging the current Current + Benchmark TOCs">
-              <span>
-                <Button
-                  size="small" disabled={busy === 'regen'} onClick={handleRegenerate}
-                  startIcon={busy === 'regen' ? <CircularProgress size={13} /> : undefined}
-                  sx={{ textTransform: 'none', color: '#667eea', fontWeight: 600, minWidth: 0, whiteSpace: 'nowrap' }}
-                >
-                  Regenerate
-                </Button>
-              </span>
-            </Tooltip>
+            <Box display="flex" alignItems="center" gap={0.5}>
+              {addedCount > 0 && (
+                <Tooltip title={`${addedCount} section${addedCount > 1 ? 's' : ''} added from the benchmark — marked with green chips below`}>
+                  <Chip
+                    size="small" label={`+${addedCount} added`}
+                    sx={{ height: 20, fontSize: '0.65rem', fontWeight: 700, bgcolor: '#dcfce7', color: '#15803d' }}
+                  />
+                </Tooltip>
+              )}
+              <Tooltip title="Regenerate a fresh Good TOC by re-merging the current Current + Benchmark TOCs">
+                <span>
+                  <Button
+                    size="small" disabled={busy === 'regen'} onClick={handleRegenerate}
+                    startIcon={busy === 'regen' ? <CircularProgress size={13} /> : undefined}
+                    sx={{ textTransform: 'none', color: '#667eea', fontWeight: 600, minWidth: 0, whiteSpace: 'nowrap' }}
+                  >
+                    Regenerate
+                  </Button>
+                </span>
+              </Tooltip>
+            </Box>
           }
         >
           <TocEditor toc={currentToc} saving={savingCol === 'good'} onSave={(t) => handleSaveColumn('good', t)} />

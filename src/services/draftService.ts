@@ -302,6 +302,22 @@ export const draftService = {
     return response.data;
   },
 
+  // Review-draft export variants (word | pdf): redline = additions highlighted green / removals red +
+  // strikethrough; changes overview = per-section Added/Modified/Unchanged + removed list.
+  async exportRedline(id: string, format: 'word' | 'pdf' = 'word'): Promise<Blob> {
+    const response = await longTimeoutClient.post(
+      `/api/v1/drafts/${id}/export/redline/${format}`, {}, { responseType: 'blob' }
+    );
+    return response.data;
+  },
+
+  async exportChangesOverview(id: string, format: 'word' | 'pdf' = 'word'): Promise<Blob> {
+    const response = await longTimeoutClient.post(
+      `/api/v1/drafts/${id}/export/changes/${format}`, {}, { responseType: 'blob' }
+    );
+    return response.data;
+  },
+
   // TOC Chat Methods
   async chatModifyToc(
     draftId: string,

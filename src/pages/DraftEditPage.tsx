@@ -73,6 +73,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { draftService } from '../services/draftService';
 import { Draft, ConversationEntry, GenerateContentRequest, ContentGenerationResponse } from '../types/draft.types';
+import { wordDiff } from '../utils/wordDiff';
 import ReviewPipelinePanel from '../components/ReviewPipelinePanel';
 import HistoryPanel from '../components/HistoryPanel';
 import TocComparePanel from '../components/TocComparePanel';
@@ -1992,6 +1993,107 @@ function ContentGenerationPanel({
   );
 }
 
+// ----- Review-draft preview bodies for the Export tab (mirror the redline / changes exports) -----
+
+// Word-level diff spans: additions green, removals red + strikethrough (same marks as the .docx/.pdf).
+function RedlineSpans({ oldText, newText }: { oldText: string; newText: string }) {
+  const parts = wordDiff(oldText, newText);
+  return (
+    <Typography variant="body1" sx={{ lineHeight: 1.8, fontSize: '16px', whiteSpace: 'pre-wrap', color: '#2d3748' }}>
+      {parts.map((p, i) => (
+        <span
+          key={i}
+          style={{
+            backgroundColor: p.type === 'added' ? '#bbf7d0' : p.type === 'removed' ? '#fecaca' : 'transparent',
+            color: p.type === 'added' ? '#166534' : p.type === 'removed' ? '#991b1b' : 'inherit',
+            textDecoration: p.type === 'removed' ? 'line-through' : 'none',
+          }}
+        >
+          {p.value}
+        </span>
+      ))}
+    </Typography>
+  );
+}
+
+function RedlinePreviewBody({ toc }: { toc: Draft['toc'] }) {
+  return (
+    <Box>
+      <Typography variant="body2" sx={{ mb: 3, color: '#64748b' }}>
+        <span style={{ backgroundColor: '#bbf7d0', color: '#166534' }}>added text</span>
+        {'   '}
+        <span style={{ backgroundColor: '#fecaca', color: '#991b1b', textDecoration: 'line-through' }}>removed text</span>
+        {'   '}Sections removed by the review are listed in the downloaded document.
+      </Typography>
+      {toc.map((topic, ti) => (
+        <Box key={topic.topic_id} sx={{ mb: 4 }}>
+          <Typography variant="h5" sx={{ fontWeight: 700, color: '#1a202c', mb: 1, pb: 0.5, borderBottom: '1px solid #e2e8f0' }}>
+            {ti + 1}. {topic.topic}
+            {topic.added_from_benchmark && (
+              <span style={{ backgroundColor: '#bbf7d0', color: '#166534', fontSize: '0.7em', marginLeft: 8 }}> (new section)</span>
+            )}
+          </Typography>
+          <RedlineSpans oldText={topic.baseline_content || ''} newText={topic.content || ''} />
+          {topic.subtopics.map((s, si) => (
+            <Box key={s.subtopic_id} sx={{ ml: 2, mt: 2 }}>
+              <Typography variant="h6" sx={{ fontWeight: 600, color: '#2d3748', mb: 0.5 }}>
+                {ti + 1}.{si + 1} {s.topic}
+                {s.added_from_benchmark && (
+                  <span style={{ backgroundColor: '#bbf7d0', color: '#166534', fontSize: '0.7em', marginLeft: 8 }}> (new section)</span>
+                )}
+              </Typography>
+              <RedlineSpans oldText={s.baseline_content || ''} newText={s.content || ''} />
+            </Box>
+          ))}
+        </Box>
+      ))}
+    </Box>
+  );
+}
+
+function ChangesPreviewBody({ toc }: { toc: Draft['toc'] }) {
+  const rows: { label: string; status: 'Added' | 'Modified' | 'Unchanged'; plus: number; minus: number }[] = [];
+  const collect = (label: string, added: boolean | undefined, baseline?: string, content?: string) => {
+    const oldT = (baseline || '').trim();
+    const newT = (content || '').trim();
+    let status: 'Added' | 'Modified' | 'Unchanged' = 'Unchanged';
+    if (added || (!oldT && newT)) status = 'Added';
+    else if (oldT !== newT) status = 'Modified';
+    let plus = 0, minus = 0;
+    if (status === 'Modified') {
+      wordDiff(oldT, newT).forEach((p) => {
+        const n = p.value.trim() ? p.value.trim().split(/\s+/).length : 0;
+        if (p.type === 'added') plus += n;
+        else if (p.type === 'removed') minus += n;
+      });
+    }
+    rows.push({ label, status, plus, minus });
+  };
+  toc.forEach((t, ti) => {
+    collect(`${ti + 1}. ${t.topic}`, t.added_from_benchmark, t.baseline_content, t.content);
+    t.subtopics.forEach((s, si) => collect(`${ti + 1}.${si + 1} ${s.topic}`, s.added_from_benchmark, s.baseline_content, s.content));
+  });
+  const added = rows.filter((r) => r.status === 'Added').length;
+  const modified = rows.filter((r) => r.status === 'Modified').length;
+  const unchanged = rows.filter((r) => r.status === 'Unchanged').length;
+  const STATUS_COLOR = { Added: '#15803d', Modified: '#b45309', Unchanged: '#64748b' };
+  return (
+    <Box>
+      <Typography variant="body1" sx={{ mb: 3, color: '#2d3748' }}>
+        <b>{rows.length} sections reviewed</b> — <span style={{ color: '#15803d' }}>{added} added</span>,{' '}
+        <span style={{ color: '#b45309' }}>{modified} modified</span>, {unchanged} unchanged.
+        Removed sections appear in the downloaded document.
+      </Typography>
+      {rows.map((r, i) => (
+        <Typography key={i} variant="body1" sx={{ mb: 0.75, color: '#2d3748' }}>
+          <b>{r.label}</b> — <span style={{ color: STATUS_COLOR[r.status] }}>{r.status}</span>
+          {r.status === 'Modified' && `  (+${r.plus} / −${r.minus} words)`}
+        </Typography>
+      ))}
+    </Box>
+  );
+}
+
 interface ExportReviewPanelProps {
   draft: Draft | null;
   currentToc: Draft['toc'];
@@ -2000,7 +2102,13 @@ interface ExportReviewPanelProps {
 function ExportReviewPanel({ draft, currentToc }: ExportReviewPanelProps) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const isCompact = useMediaQuery(theme.breakpoints.down('xl'));
+  // Always use the dense layout — the XL variant (h3/h4 text, p:3 cards, 32px icons) dwarfed
+  // every other tab on large screens.
+  const isCompact = true;
+  const isReview = !!draft?.metadata?.review_mode;
+  // Two independent choices: WHICH document (final / redline / changes — review drafts only)
+  // and WHICH file format (word / pdf). Every document is available in both formats.
+  const [selectedVariant, setSelectedVariant] = useState<'final' | 'redline' | 'changes'>('final');
   const [selectedExportFormat, setSelectedExportFormat] = useState<'word' | 'pdf'>('word');
   const [isExporting, setIsExporting] = useState(false);
   const [exportSuccess, setExportSuccess] = useState(false);
@@ -2046,13 +2154,19 @@ function ExportReviewPanel({ draft, currentToc }: ExportReviewPanelProps) {
     setIsExporting(true);
     try {
       let blob: Blob;
+      const ext = selectedExportFormat === 'word' ? 'docx' : 'pdf';
       let filename: string;
 
-      if (selectedExportFormat === 'word') {
+      if (selectedVariant === 'redline') {
+        blob = await draftService.exportRedline(draft.id, selectedExportFormat);
+        filename = `${draft.metadata.title}_redline.${ext}`;
+      } else if (selectedVariant === 'changes') {
+        blob = await draftService.exportChangesOverview(draft.id, selectedExportFormat);
+        filename = `${draft.metadata.title}_changes.${ext}`;
+      } else if (selectedExportFormat === 'word') {
         blob = await draftService.exportToWord(draft.id);
         filename = `${draft.metadata.title}.docx`;
       } else {
-        // selectedExportFormat === 'pdf'
         blob = await draftService.exportToPDF(draft.id);
         filename = `${draft.metadata.title}.pdf`;
       }
@@ -2525,6 +2639,35 @@ function ExportReviewPanel({ draft, currentToc }: ExportReviewPanelProps) {
             </Typography>
 
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: isCompact ? 1 : 2 }}>
+              {isReview && (
+                <>
+                  <Typography variant="caption" sx={{ fontWeight: 700, color: '#64748b' }}>DOCUMENT</Typography>
+                  {[
+                    { variant: 'final' as const, title: 'Final policy', description: 'The clean reviewed policy — done sections only', color: '#2563eb' },
+                    { variant: 'redline' as const, title: 'Redline', description: 'Every change marked — additions green, removals red', color: '#15803d' },
+                    { variant: 'changes' as const, title: 'Changes overview', description: 'Per-section summary: added, modified, removed', color: '#d97706' },
+                  ].map(({ variant, title, description, color }) => (
+                    <Paper
+                      key={variant}
+                      elevation={0}
+                      onClick={() => setSelectedVariant(variant)}
+                      sx={{
+                        p: 1.5,
+                        border: selectedVariant === variant ? `2px solid ${color}` : '1px solid #e2e8f0',
+                        borderRadius: 1.5,
+                        cursor: 'pointer',
+                        background: selectedVariant === variant ? `${color}08` : 'white',
+                        transition: 'all 0.2s ease',
+                        '&:hover': { borderColor: color },
+                      }}
+                    >
+                      <Typography variant="body2" sx={{ fontWeight: 600, color: '#2d3748' }}>{title}</Typography>
+                      <Typography variant="caption" sx={{ color: '#718096' }}>{description}</Typography>
+                    </Paper>
+                  ))}
+                  <Typography variant="caption" sx={{ fontWeight: 700, color: '#64748b', mt: 0.5 }}>FILE FORMAT</Typography>
+                </>
+              )}
               {[
                 { format: 'word' as const, icon: InsertDriveFile, title: 'Microsoft Word', description: 'DOCX format, fully editable', color: '#2563eb' },
                 { format: 'pdf' as const, icon: PictureAsPdf, title: 'PDF Document', description: 'Print-ready format', color: '#dc2626' },
@@ -2616,7 +2759,9 @@ function ExportReviewPanel({ draft, currentToc }: ExportReviewPanelProps) {
                   },
                 }}
               >
-                {isExporting ? 'Exporting...' : `Export as ${selectedExportFormat.toUpperCase()}`}
+                {isExporting
+                  ? 'Exporting...'
+                  : `Export ${isReview ? `${{ final: 'Final Policy', redline: 'Redline', changes: 'Changes Overview' }[selectedVariant]} ` : ''}as ${selectedExportFormat === 'word' ? 'Word' : 'PDF'}`}
               </Button>
 
               <Button
@@ -2798,7 +2943,12 @@ function ExportReviewPanel({ draft, currentToc }: ExportReviewPanelProps) {
               ))}
             </Box>
 
-            {/* Document Content Preview */}
+            {/* Document body — mirrors the selected export document (final / redline / changes) */}
+            {isReview && selectedVariant === 'redline' ? (
+              <RedlinePreviewBody toc={currentToc} />
+            ) : isReview && selectedVariant === 'changes' ? (
+              <ChangesPreviewBody toc={currentToc} />
+            ) : (
             <Box>
               {currentToc.map((topic, topicIndex) => (
                 <Box key={topic.topic_id} sx={{ mb: 4 }}>
@@ -2872,6 +3022,7 @@ function ExportReviewPanel({ draft, currentToc }: ExportReviewPanelProps) {
                 </Box>
               ))}
             </Box>
+            )}
           </Box>
         </DialogContent>
 
@@ -2900,7 +3051,7 @@ function ExportReviewPanel({ draft, currentToc }: ExportReviewPanelProps) {
               },
             }}
           >
-            Export as {selectedExportFormat.toUpperCase()}
+            Export {isReview ? `${{ final: 'Final Policy', redline: 'Redline', changes: 'Changes Overview' }[selectedVariant]} ` : ''}as {selectedExportFormat === 'word' ? 'Word' : 'PDF'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -3043,6 +3194,10 @@ const DraftEditPage: React.FC = () => {
     return currentToc; // 'good' = the working TOC
   }, [selectedTocSource, draft, currentToc]);
 
+  // Land review drafts on the TOC tab only on the FIRST load — later reloads (saves, approve,
+  // history restore) keep the user where they are instead of bouncing them back.
+  const reviewTabInitRef = useRef(false);
+
   const loadDraft = React.useCallback(async (draftId: string) => {
     setLoading(true);
     setError(null);
@@ -3058,8 +3213,9 @@ const DraftEditPage: React.FC = () => {
         setTocSource(data.metadata.toc_source as 'similarity_search' | 'similar_policy' | 'ai_generated' | 'uploaded_policy');
       }
       // Land review drafts on the Table of Contents tab (index 1) — the TOC-first workflow:
-      // get the perfect TOC agreed before any per-section gap/content work.
-      if (data.metadata?.review_mode) {
+      // get the perfect TOC agreed before any per-section gap/content work. First load only.
+      if (data.metadata?.review_mode && !reviewTabInitRef.current) {
+        reviewTabInitRef.current = true;
         setTabValue(1);
       }
       // Load TOC chat history if available
@@ -4222,6 +4378,10 @@ const DraftEditPage: React.FC = () => {
             metadata={draft.metadata}
             currentToc={currentToc}
             onChanged={() => { if (id) loadDraft(id); }}
+            onApproved={async () => {
+              if (id) await loadDraft(id);
+              setTabValue(4); // approval unlocks the Review tab — take the reviewer straight there
+            }}
           />
         )}
         <Box sx={{ mt: 1.5, display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2, height: { xs: 'auto', md: 'calc(100vh - 280px)' }, minHeight: { md: 500 } }}>
