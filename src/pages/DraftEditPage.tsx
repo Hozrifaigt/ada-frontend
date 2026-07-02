@@ -3085,6 +3085,13 @@ const DraftEditPage: React.FC = () => {
     }
   }, [id, loadDraft]);
 
+  // If the Review tab becomes unavailable (TOC not/no-longer approved), don't strand the user on it.
+  useEffect(() => {
+    if (tabValue === 4 && draft && !draft.metadata.toc_approved) {
+      setTabValue(1);
+    }
+  }, [tabValue, draft]);
+
   // Handle TOC Chat Messages
   const handleTocChatMessage = React.useCallback(async (
     chatInput: string,
@@ -3913,6 +3920,9 @@ const DraftEditPage: React.FC = () => {
               icon={<Source />}
               iconPosition="start"
               label="Review"
+              // Section review is gated behind an agreed structure — locked until the TOC is approved.
+              disabled={!draft.metadata.toc_approved}
+              title={!draft.metadata.toc_approved ? 'Approve the Table of Contents first to start the section review' : undefined}
             />
           )}
           <Tab

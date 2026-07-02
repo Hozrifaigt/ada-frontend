@@ -154,6 +154,9 @@ const ReviewPipelinePanel: React.FC<ReviewPipelinePanelProps> = ({ draftId, toc,
   const selectedStep: ReviewStep = selected ? stepOf(selected) : 'pending';
   // A closed (done) section is read-only until reopened — no benchmark/regulation/edit actions.
   const locked = selectedStep === 'closed';
+  // The benchmark step compares the client's baseline against the benchmark. With no baseline (and no
+  // content yet) there is nothing to assess, so Run benchmark is disabled for that section.
+  const hasBaselineContent = !!((selected?.baseline || selected?.content || '').trim());
 
   // Editable working content for the selected unit.
   const [editContent, setEditContent] = useState('');
@@ -169,6 +172,9 @@ const ReviewPipelinePanel: React.FC<ReviewPipelinePanelProps> = ({ draftId, toc,
   const [regsMsg, setRegsMsg] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const regFileRef = useRef<HTMLInputElement>(null);
+  // Manual benchmark override (Review tab): reviewer-supplied benchmark text for the selected section.
+  const [manualOpen, setManualOpen] = useState(false);
+  const [manualBench, setManualBench] = useState('');
 
   // Re-seed per-section state when the selection changes.
   useEffect(() => {
@@ -180,6 +186,8 @@ const ReviewPipelinePanel: React.FC<ReviewPipelinePanelProps> = ({ draftId, toc,
     setChatInput('');
     setPreview(null);
     setError(null);
+    setManualOpen(false);
+    setManualBench('');
     // Open the timeline at the section's current point in the pipeline.
     setActiveStep(Math.min(completedThrough(selected?.reviewStep || 'pending'), 2));
   }, [selectedKey]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -206,6 +214,25 @@ const ReviewPipelinePanel: React.FC<ReviewPipelinePanelProps> = ({ draftId, toc,
     } finally {
       setBusy(null);
     }
+  };
+
+  // Save (or clear) the reviewer's manual benchmark text for this section, then re-run the benchmark
+  // assessment so the findings/as-is reflect the supplied text.
+  const saveManualBench = async (clear: boolean) => {
+    if (!selected) return;
+    setError(null);
+    try {
+      setBusy('manualbench');
+      await draftService.setBenchmarkContent(draftId, selected.topicId, clear ? '' : manualBench, selected.subtopicId);
+      if (clear) setManualBench('');
+      setManualOpen(false);
+    } catch (e: any) {
+      setError(e?.message || 'Could not save manual benchmark');
+      setBusy(null);
+      return;
+    }
+    setBusy(null);
+    await runBenchmark();
   };
 
   // "Tweak to fix gaps": apply ONLY the ticked findings via the apply-gap merge engine (preserves baseline),
@@ -472,12 +499,75 @@ const ReviewPipelinePanel: React.FC<ReviewPipelinePanelProps> = ({ draftId, toc,
                     size="small"
                     variant={benchmark ? 'outlined' : 'contained'}
                     startIcon={<LibraryBooks />}
-                    disabled={!!busy || locked}
+                    disabled={!!busy || locked || !hasBaselineContent}
                     onClick={runBenchmark}
                     sx={benchmark ? undefined : GRADIENT_BTN}
                   >
                     {busy === 'benchmark' ? 'Reviewing…' : benchmark ? 'Re-run benchmark' : 'Run benchmark review'}
                   </Button>
+                </Box>
+
+                {!hasBaselineContent && (
+                  <Alert severity="info" sx={{ py: 0.25 }}>
+                    No client baseline content detected for this section — there's nothing to benchmark against.
+                  </Alert>
+                )}
+
+                {/* Manual benchmark override — always available; overrides auto-matching for this section
+                    (useful when nothing was matched, or the auto-match is wrong). */}
+                <Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Button
+                      size="small"
+                      variant="text"
+                      startIcon={<LibraryBooks />}
+                      disabled={locked}
+                      onClick={() => {
+                        // Seed the editor from the benchmark text currently in use so it can be edited.
+                        if (!manualOpen) setManualBench((prev) => prev || benchmark?.benchmark_content || '');
+                        setManualOpen((o) => !o);
+                      }}
+                      sx={{ textTransform: 'none', color: '#667eea' }}
+                    >
+                      {benchmark?.benchmark_match === 'Manual benchmark' ? 'Edit manual benchmark' : 'Provide benchmark manually'}
+                    </Button>
+                    {benchmark?.benchmark_match === 'Manual benchmark' && (
+                      <Chip size="small" label="Manual benchmark in use" sx={{ height: 20, fontSize: '0.65rem', bgcolor: '#eef2ff', color: '#4338ca' }} />
+                    )}
+                    {benchmark && benchmark.benchmark_match !== 'Manual benchmark' && !benchmark.benchmark_content && (
+                      <Chip size="small" label="No benchmark matched" sx={{ height: 20, fontSize: '0.65rem', bgcolor: '#fef2f2', color: '#b91c1c' }} />
+                    )}
+                  </Box>
+                  {manualOpen && (
+                    <Box sx={{ mt: 1 }}>
+                      <TextField
+                        multiline minRows={5} fullWidth size="small"
+                        placeholder="Paste the benchmark text to test this section against. Leave empty to use the auto-matched benchmark."
+                        value={manualBench}
+                        onChange={(e) => setManualBench(e.target.value)}
+                        disabled={!!busy || locked}
+                      />
+                      <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                        <Button
+                          size="small" variant="contained" sx={GRADIENT_BTN}
+                          disabled={!!busy || locked || !manualBench.trim()}
+                          onClick={() => saveManualBench(false)}
+                        >
+                          {busy === 'manualbench' ? 'Saving…' : 'Save & re-run'}
+                        </Button>
+                        <Button
+                          size="small" variant="outlined"
+                          disabled={!!busy || locked}
+                          onClick={() => saveManualBench(true)}
+                        >
+                          Clear override
+                        </Button>
+                        <Button size="small" variant="text" disabled={!!busy} onClick={() => setManualOpen(false)}>
+                          Cancel
+                        </Button>
+                      </Box>
+                    </Box>
+                  )}
                 </Box>
 
                 {benchmark && (

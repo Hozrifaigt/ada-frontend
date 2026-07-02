@@ -548,5 +548,20 @@ export const draftService = {
     return response.data;
   },
 
+  // Set (or clear, when content is empty) the reviewer's manual benchmark text for a section.
+  // When set it OVERRIDES auto-matching; re-run reviewBenchmark to assess against it.
+  async setBenchmarkContent(
+    draftId: string,
+    topicId: string,
+    content: string,
+    subtopicId?: string
+  ): Promise<{ topic_id: string; subtopic_id: string | null; has_manual_benchmark: boolean; message: string }> {
+    const response = await apiClient.post(
+      `/api/v1/drafts/${draftId}/topics/${topicId}/benchmark-content`,
+      { content, subtopic_id: subtopicId }
+    );
+    return response.data;
+  },
+
   // Policy type methods removed - no longer using Excel templates
 };
