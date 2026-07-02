@@ -574,8 +574,31 @@ const NewDraftPage: React.FC = () => {
                       <Box sx={{ mt: 2, p: isCompact ? 1.5 : 2, border: '1px solid #e2e8f0', borderRadius: 2, background: '#fafbff' }}>
                         <Box mb={1}>
                           <Typography variant="caption" fontWeight={600} display="block">Benchmark Policy *</Typography>
-                          <Typography variant="caption" color="text.secondary">Good-standard reference for the gap assessment</Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            Good-standard reference for the gap assessment — upload your own .docx, or pick an existing policy from the firm library
+                          </Typography>
                         </Box>
+
+                        {/* Explicit source choice: both options visible up front (the old on/off switch only
+                            showed the CURRENT mode, so users couldn't tell what flipping it would do). */}
+                        <ToggleButtonGroup
+                          size="small"
+                          exclusive
+                          value={benchmarkMode}
+                          onChange={(_, val) => {
+                            if (!val) return;
+                            setBenchmarkMode(val);
+                            if (val === 'browse') setBenchmarkFile(null); else setBenchmarkPolicyId(null);
+                          }}
+                          sx={{
+                            mb: 1.5,
+                            '& .MuiToggleButton-root': { textTransform: 'none', px: 1.5, py: 0.4, fontSize: '0.75rem' },
+                            '& .MuiToggleButton-root.Mui-selected': { color: '#4338ca', backgroundColor: '#eef2ff' },
+                          }}
+                        >
+                          <ToggleButton value="upload">Upload a file</ToggleButton>
+                          <ToggleButton value="browse">Choose from library</ToggleButton>
+                        </ToggleButtonGroup>
 
                         {benchmarkMode === 'upload' ? (
                           <>
@@ -649,32 +672,6 @@ const NewDraftPage: React.FC = () => {
                             )}
                           />
                         )}
-
-                        <Box display="flex" alignItems="center" mt={1}>
-                          <FormControlLabel
-                            sx={{ m: 0 }}
-                            control={
-                              <Switch
-                                size="small"
-                                checked={benchmarkMode === 'browse'}
-                                onChange={(e) => {
-                                  const browse = e.target.checked;
-                                  setBenchmarkMode(browse ? 'browse' : 'upload');
-                                  if (browse) setBenchmarkFile(null); else setBenchmarkPolicyId(null);
-                                }}
-                                sx={{
-                                  '& .MuiSwitch-switchBase.Mui-checked': { color: '#667eea' },
-                                  '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { backgroundColor: '#667eea' },
-                                }}
-                              />
-                            }
-                            label={
-                              <Typography variant="caption" color="text.secondary">
-                                {benchmarkMode === 'browse' ? 'Browse from library' : 'Upload a file'}
-                              </Typography>
-                            }
-                          />
-                        </Box>
 
                         <Box sx={{ mt: 1.5, pt: 1.5, borderTop: '1px solid #eef0f6' }}>
                           <Typography variant="caption" fontWeight={600} display="block">Rewrite intensity</Typography>
