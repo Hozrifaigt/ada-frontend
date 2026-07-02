@@ -4,6 +4,7 @@ import {
   Paper,
   Typography,
   Button,
+  Chip,
   IconButton,
   TextField,
   Tooltip,
@@ -148,6 +149,16 @@ export function SortableSubtopic({
           >
             {subtopic.topic}
           </Typography>
+        )}
+
+        {subtopic.added_from_benchmark && (
+          <Tooltip title={subtopic.benchmark_match ? `Added from benchmark: ${subtopic.benchmark_match}` : 'Added from the benchmark'}>
+            <Chip
+              label="added"
+              size="small"
+              sx={{ height: 16, fontSize: '0.6rem', fontWeight: 700, bgcolor: '#dcfce7', color: '#15803d' }}
+            />
+          </Tooltip>
         )}
 
         <Box display="flex" gap={0.25}>
@@ -306,6 +317,16 @@ export function SortableTopic({
             >
               {topic.topic}
             </Typography>
+          )}
+
+          {topic.added_from_benchmark && (
+            <Tooltip title={topic.reconcile_note || (topic.benchmark_match ? `Added from benchmark: ${topic.benchmark_match}` : 'Added from the benchmark')}>
+              <Chip
+                label="added"
+                size="small"
+                sx={{ height: 18, fontSize: '0.6rem', fontWeight: 700, bgcolor: '#dcfce7', color: '#15803d' }}
+              />
+            </Tooltip>
           )}
 
           <Box display="flex" gap={0.25}>

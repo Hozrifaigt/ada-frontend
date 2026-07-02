@@ -16,7 +16,7 @@ import {
   IconButton,
   Tooltip,
 } from '@mui/material';
-import { AccountTree, Add, DeleteOutline, Save as SaveIcon } from '@mui/icons-material';
+import { AccountTree, Add, DeleteOutline, Lock, Save as SaveIcon } from '@mui/icons-material';
 import { draftService } from '../services/draftService';
 
 const PURPLE_GRADIENT = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
@@ -47,6 +47,7 @@ interface RTarget {
   title: string;
   level: 'topic' | 'subtopic';
   isNew?: boolean;
+  added?: boolean; // origin: added from the benchmark (vs a client-policy section)
 }
 
 interface Props {
@@ -55,6 +56,8 @@ interface Props {
   onApplied: () => void;
   size?: 'small' | 'medium';
   disabled?: boolean;
+  // Show a "Save & approve TOC" action in the dialog (hidden once the TOC is already approved).
+  showApprove?: boolean;
 }
 
 /**
@@ -63,10 +66,11 @@ interface Props {
  * each section's content, then Save. Saving rebuilds the Good TOC and sets content + baseline. Lives in the
  * TOC tab; self-contained so the layout can be swapped without touching anything else.
  */
-const RedistributeButton: React.FC<Props> = ({ draftId, onApplied, size = 'small', disabled = false }) => {
+const RedistributeButton: React.FC<Props> = ({ draftId, onApplied, size = 'small', disabled = false, showApprove = false }) => {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [approving, setApproving] = useState(false);
   const [sources, setSources] = useState<RSource[]>([]);
   const [targets, setTargets] = useState<RTarget[]>([]);
   const [assignment, setAssignment] = useState<Record<string, string>>({});
@@ -89,6 +93,7 @@ const RedistributeButton: React.FC<Props> = ({ draftId, onApplied, size = 'small
       const asg = { ...p.assignments };
       const tg: RTarget[] = p.targets.map((t) => ({
         key: t.key, topic_id: t.topic_id, subtopic_id: t.subtopic_id, title: t.title, level: t.level, isNew: false,
+        added: !!t.added_from_benchmark,
       }));
       const buf: Record<string, string> = {};
       const cur: Record<string, string> = {};
@@ -125,7 +130,13 @@ const RedistributeButton: React.FC<Props> = ({ draftId, onApplied, size = 'small
   const unplaced = () => sources.filter((s) => (assignment[String(s.id)] || UNASSIGNED) === UNASSIGNED);
   const statusOf = (key: string): Status => {
     const n = sourcesFor(key).length;
-    return n === 0 ? 'added' : n === 1 ? 'kept' : 'merged';
+    if (n >= 2) return 'merged';        // several client sources combined here
+    if (n === 1) return 'kept';         // one client source
+    // 0 client sources mapped: origin decides. A client-policy section (e.g. a parent topic whose
+    // content lives in its subtopics) is "kept" — it's from the client, just empty here. Only a
+    // benchmark-added section or a brand-new one the reviewer created is truly "added".
+    const t = targets.find((x) => x.key === key);
+    return (!t || t.isNew || t.added) ? 'added' : 'kept';
   };
 
   const placeSource = (sourceId: number, key: string) => {
@@ -194,8 +205,9 @@ const RedistributeButton: React.FC<Props> = ({ draftId, onApplied, size = 'small
     if (selectedKey === key) setSelectedKey(UNPLACED_VIEW);
   };
 
-  const save = async () => {
+  const save = async (approve = false) => {
     setSaving(true);
+    setApproving(approve);
     setError(null);
     try {
       const payload = targets.map((t) => ({
@@ -207,12 +219,16 @@ const RedistributeButton: React.FC<Props> = ({ draftId, onApplied, size = 'small
         include: t.isNew || contentChanged(t.key),
       }));
       await draftService.commitRedistribution(draftId, payload);
+      // "Save & approve" locks the TOC in the same flow — the mapping was just committed, so the
+      // approve gate (content_mapped) is satisfied.
+      if (approve) await draftService.approveToc(draftId);
       setOpen(false);
       onApplied();
     } catch (e: any) {
-      setError(e?.response?.data?.detail || 'Could not save.');
+      setError(e?.response?.data?.detail || (approve ? 'Saved the mapping but could not approve the TOC.' : 'Could not save.'));
     } finally {
       setSaving(false);
+      setApproving(false);
     }
   };
 
@@ -405,10 +421,10 @@ const RedistributeButton: React.FC<Props> = ({ draftId, onApplied, size = 'small
                       <Box sx={{ flex: 1 }} />
                       <Button
                         size="small" variant="contained" startIcon={<SaveIcon sx={{ fontSize: 16 }} />}
-                        onClick={save} disabled={saving || !hasChanges()}
+                        onClick={() => save()} disabled={saving || !hasChanges()}
                         sx={{ background: PURPLE_GRADIENT, color: '#fff', textTransform: 'none', '&.Mui-disabled': { color: '#fff', opacity: 0.55 } }}
                       >
-                        {saving ? 'Saving…' : 'Save'}
+                        {saving && !approving ? 'Saving…' : 'Save'}
                       </Button>
                     </Box>
                   </>
@@ -422,11 +438,24 @@ const RedistributeButton: React.FC<Props> = ({ draftId, onApplied, size = 'small
         <DialogActions>
           <Button onClick={() => setOpen(false)} disabled={saving}>Cancel</Button>
           <Button
-            variant="contained" onClick={save} disabled={saving || loading || !hasChanges()}
+            variant="contained" onClick={() => save()} disabled={saving || loading || !hasChanges()}
             sx={{ background: PURPLE_GRADIENT, color: '#fff', '&.Mui-disabled': { color: '#fff', opacity: 0.55 } }}
           >
-            {saving ? 'Saving…' : 'Save all'}
+            {saving && !approving ? 'Saving…' : 'Save all'}
           </Button>
+          {showApprove && (
+            <Tooltip title="Save this mapping and lock the TOC as the agreed structure (Approve TOC)">
+              <span>
+                <Button
+                  variant="contained" startIcon={approving ? <CircularProgress size={14} color="inherit" /> : <Lock sx={{ fontSize: 16 }} />}
+                  onClick={() => save(true)} disabled={saving || loading}
+                  sx={{ background: PURPLE_GRADIENT, color: '#fff', '&.Mui-disabled': { color: '#fff', opacity: 0.55 } }}
+                >
+                  {approving ? 'Approving…' : 'Save & approve TOC'}
+                </Button>
+              </span>
+            </Tooltip>
+          )}
         </DialogActions>
       </Dialog>
     </>

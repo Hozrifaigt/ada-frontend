@@ -13,6 +13,8 @@ import {
   Stepper,
   Step,
   StepButton,
+  Select,
+  MenuItem,
 } from '@mui/material';
 import {
   LibraryBooks,
@@ -46,14 +48,24 @@ interface Unit {
   reviewStep: ReviewStep;
   isSubtopic: boolean;
   label: string;
+  added: boolean; // provenance: added from benchmark (vs kept from the client policy)
+  pinned: string; // reviewer-pinned benchmark section (manual_benchmark_match), '' = auto
 }
 
 interface BenchmarkResult {
   baseline_content: string;
   benchmark_content: string;
   benchmark_match: string | null;
+  benchmark_source?: 'manual' | 'pinned' | 'matched' | 'none';
   findings: GapFinding[];
   as_is_suggestion: string;
+}
+
+interface BenchUnit {
+  name: string;
+  level: 'topic' | 'subtopic';
+  parent: string | null;
+  has_content: boolean;
 }
 
 const SEVERITY_COLOR: Record<string, string> = { high: '#dc2626', medium: '#d97706', low: '#10b981' };
@@ -123,6 +135,8 @@ const ReviewPipelinePanel: React.FC<ReviewPipelinePanelProps> = ({ draftId, toc,
         reviewStep: (t.review_step as ReviewStep) || 'pending',
         isSubtopic: false,
         label: `${ti + 1}`,
+        added: !!t.added_from_benchmark,
+        pinned: t.manual_benchmark_match || '',
       });
       (t.subtopics || []).forEach((s, si) => {
         out.push({
@@ -135,6 +149,8 @@ const ReviewPipelinePanel: React.FC<ReviewPipelinePanelProps> = ({ draftId, toc,
           reviewStep: (s.review_step as ReviewStep) || 'pending',
           isSubtopic: true,
           label: `${ti + 1}.${si + 1}`,
+          added: !!s.added_from_benchmark,
+          pinned: s.manual_benchmark_match || '',
         });
       });
     });
@@ -145,9 +161,10 @@ const ReviewPipelinePanel: React.FC<ReviewPipelinePanelProps> = ({ draftId, toc,
   // (a reload would bounce the reviewer off the Review tab — loadDraft lands review drafts on the TOC tab).
   const [stepOverrides, setStepOverrides] = useState<Record<string, ReviewStep>>({});
   const stepOf = (u: Unit): ReviewStep => stepOverrides[u.key] ?? u.reviewStep;
-  // A section with frozen client baseline text came from the client policy ("kept"); otherwise it was
-  // added from the benchmark ("added").
-  const provOf = (u: Unit): Provenance => ((u.baseline || '').trim() ? 'kept' : 'added');
+  // Provenance is the section's ORIGIN, not whether it currently has text: a section added from the
+  // benchmark is "added"; everything from the client policy is "kept" (even if its baseline is empty,
+  // e.g. a parent topic whose content lives in its subtopics).
+  const provOf = (u: Unit): Provenance => (u.added ? 'added' : 'kept');
 
   const [selectedKey, setSelectedKey] = useState<string | null>(units[0]?.key ?? null);
   const selected = units.find((u) => u.key === selectedKey) || null;
@@ -175,10 +192,34 @@ const ReviewPipelinePanel: React.FC<ReviewPipelinePanelProps> = ({ draftId, toc,
   // Manual benchmark override (Review tab): reviewer-supplied benchmark text for the selected section.
   const [manualOpen, setManualOpen] = useState(false);
   const [manualBench, setManualBench] = useState('');
+  // Benchmark topic/subtopic list for the match picker + local pin overrides (avoid a draft reload).
+  const [benchUnits, setBenchUnits] = useState<BenchUnit[]>([]);
+  const [matchOverrides, setMatchOverrides] = useState<Record<string, string>>({});
+  const pinnedOf = (u: Unit | null): string => (u ? (matchOverrides[u.key] ?? u.pinned) : '');
+
+  // The section's WORKING content starts empty until the reviewer actually produces something: an
+  // untouched section (still 'pending') whose content merely mirrors the frozen client baseline — or
+  // that has no baseline at all — shows an empty editor. The client's text lives in CLIENT BASELINE;
+  // "current content" only fills once gaps are fixed / benchmark applied / edits saved.
+  const workingContentOf = (u: Unit | null): string => {
+    if (!u) return '';
+    const c = (u.content || '').trim();
+    if (!c) return '';
+    const step = stepOverrides[u.key] ?? u.reviewStep;
+    if (step === 'pending' && c === (u.baseline || '').trim()) return '';
+    return u.content;
+  };
+
+  useEffect(() => {
+    draftService
+      .getBenchmarkUnits(draftId)
+      .then((r) => setBenchUnits(r.units || []))
+      .catch(() => setBenchUnits([]));
+  }, [draftId]);
 
   // Re-seed per-section state when the selection changes.
   useEffect(() => {
-    setEditContent(selected?.content || '');
+    setEditContent(workingContentOf(selected));
     setBenchmark(null);
     setCheckedFindings({});
     setReg(null);
@@ -228,6 +269,24 @@ const ReviewPipelinePanel: React.FC<ReviewPipelinePanelProps> = ({ draftId, toc,
       setManualOpen(false);
     } catch (e: any) {
       setError(e?.message || 'Could not save manual benchmark');
+      setBusy(null);
+      return;
+    }
+    setBusy(null);
+    await runBenchmark();
+  };
+
+  // Pin (or clear, name='') the benchmark section this unit is tested against, then re-run the
+  // assessment so findings/as-is reflect the picked section.
+  const savePinnedMatch = async (name: string) => {
+    if (!selected) return;
+    setError(null);
+    try {
+      setBusy('match');
+      await draftService.setBenchmarkMatch(draftId, selected.topicId, name, selected.subtopicId);
+      setMatchOverrides((prev) => ({ ...prev, [selected.key]: name }));
+    } catch (e: any) {
+      setError(e?.message || 'Could not set the benchmark match');
       setBusy(null);
       return;
     }
@@ -513,9 +572,54 @@ const ReviewPipelinePanel: React.FC<ReviewPipelinePanelProps> = ({ draftId, toc,
                   </Alert>
                 )}
 
-                {/* Manual benchmark override — always available; overrides auto-matching for this section
-                    (useful when nothing was matched, or the auto-match is wrong). */}
+                {/* Benchmark match — the reviewer picks which benchmark topic/subtopic this section is
+                    tested against ("Auto" = best match). Overrides a wrong auto-match without any typing;
+                    pasting custom benchmark text stays available as a secondary option below. */}
                 <Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                    <Typography variant="caption" sx={{ fontWeight: 700, color: '#475569' }}>
+                      BENCHMARK MATCH
+                    </Typography>
+                    <Select
+                      size="small"
+                      displayEmpty
+                      value={pinnedOf(selected)}
+                      disabled={!!busy || locked || benchUnits.length === 0}
+                      onChange={(e) => savePinnedMatch(e.target.value as string)}
+                      renderValue={(v) => (v ? String(v) : 'Auto (best match)')}
+                      sx={{ minWidth: 260, fontSize: '0.8rem' }}
+                    >
+                      <MenuItem value="">
+                        <em>Auto (best match)</em>
+                      </MenuItem>
+                      {benchUnits.map((bu, i) => (
+                        <MenuItem
+                          key={`${bu.parent || ''}|${bu.name}|${i}`}
+                          value={bu.name}
+                          sx={{ pl: bu.level === 'subtopic' ? 4 : 2, fontWeight: bu.level === 'topic' ? 600 : 400, fontSize: '0.8rem' }}
+                        >
+                          {bu.name}
+                          {bu.level === 'subtopic' && bu.parent ? ` — ${bu.parent}` : ''}
+                          {bu.has_content ? '' : ' (no content)'}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                    {busy === 'match' && <CircularProgress size={14} />}
+                    {benchmark?.benchmark_source === 'manual' && (
+                      <Chip size="small" label="Manual text in use" sx={{ height: 20, fontSize: '0.65rem', bgcolor: '#eef2ff', color: '#4338ca' }} />
+                    )}
+                    {benchmark?.benchmark_source === 'pinned' && (
+                      <Chip size="small" label={`Pinned: ${benchmark.benchmark_match}`} sx={{ height: 20, fontSize: '0.65rem', bgcolor: '#eef2ff', color: '#4338ca' }} />
+                    )}
+                    {benchmark?.benchmark_source === 'none' && (
+                      <Chip size="small" label="No benchmark matched" sx={{ height: 20, fontSize: '0.65rem', bgcolor: '#fef2f2', color: '#b91c1c' }} />
+                    )}
+                  </Box>
+                  {benchUnits.length === 0 && (
+                    <Typography variant="caption" sx={{ color: '#94a3b8' }}>
+                      No benchmark sections available — attach a benchmark in the TOC tab to enable matching.
+                    </Typography>
+                  )}
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                     <Button
                       size="small"
@@ -529,14 +633,8 @@ const ReviewPipelinePanel: React.FC<ReviewPipelinePanelProps> = ({ draftId, toc,
                       }}
                       sx={{ textTransform: 'none', color: '#667eea' }}
                     >
-                      {benchmark?.benchmark_match === 'Manual benchmark' ? 'Edit manual benchmark' : 'Provide benchmark manually'}
+                      {benchmark?.benchmark_source === 'manual' ? 'Edit pasted benchmark text' : 'Paste benchmark text instead'}
                     </Button>
-                    {benchmark?.benchmark_match === 'Manual benchmark' && (
-                      <Chip size="small" label="Manual benchmark in use" sx={{ height: 20, fontSize: '0.65rem', bgcolor: '#eef2ff', color: '#4338ca' }} />
-                    )}
-                    {benchmark && benchmark.benchmark_match !== 'Manual benchmark' && !benchmark.benchmark_content && (
-                      <Chip size="small" label="No benchmark matched" sx={{ height: 20, fontSize: '0.65rem', bgcolor: '#fef2f2', color: '#b91c1c' }} />
-                    )}
                   </Box>
                   {manualOpen && (
                     <Box sx={{ mt: 1 }}>
@@ -775,7 +873,7 @@ const ReviewPipelinePanel: React.FC<ReviewPipelinePanelProps> = ({ draftId, toc,
                 <Button
                   size="small"
                   variant="outlined"
-                  disabled={busy === 'apply' || locked || editContent === selected.content}
+                  disabled={busy === 'apply' || locked || editContent === workingContentOf(selected)}
                   onClick={() => applyContent(editContent, 'review')}
                 >
                   {busy === 'apply' ? 'Saving…' : 'Save edits'}

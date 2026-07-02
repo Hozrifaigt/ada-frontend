@@ -203,7 +203,12 @@ const TocComparePanel: React.FC<TocComparePanelProps> = ({ draftId, metadata, cu
             <>
               <Tooltip title={hasGoodToc ? 'Map the client content into the Good TOC sections' : 'Build the Good TOC first'}>
                 <span>
-                  <RedistributeButton draftId={draftId} onApplied={onChanged} disabled={!hasGoodToc} />
+                  <RedistributeButton
+                    draftId={draftId}
+                    onApplied={onChanged}
+                    disabled={!hasGoodToc}
+                    showApprove={!metadata.toc_approved}
+                  />
                 </span>
               </Tooltip>
               {metadata.toc_approved ? (

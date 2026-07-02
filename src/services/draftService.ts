@@ -431,7 +431,7 @@ export const draftService = {
     draftId: string
   ): Promise<{
     sources: { id: number; title: string; content: string; level: 'topic' | 'subtopic' }[];
-    targets: { key: string; topic_id: string; subtopic_id: string | null; title: string; level: 'topic' | 'subtopic'; current_content: string }[];
+    targets: { key: string; topic_id: string; subtopic_id: string | null; title: string; level: 'topic' | 'subtopic'; current_content: string; added_from_benchmark?: boolean }[];
     assignments: Record<string, string>; // source id (string) -> target key | "unassigned"
   }> {
     const response = await longTimeoutClient.post(`/api/v1/drafts/${draftId}/redistribute/propose`, {});
@@ -466,6 +466,7 @@ export const draftService = {
   ): Promise<{
     topic_id: string; subtopic_id: string | null;
     baseline_content: string; benchmark_content: string; benchmark_match: string | null;
+    benchmark_source: 'manual' | 'pinned' | 'matched' | 'none';
     findings: import('../types/draft.types').GapFinding[]; as_is_suggestion: string; message: string;
   }> {
     const qs = subtopicId ? `?subtopic_id=${encodeURIComponent(subtopicId)}` : '';
@@ -559,6 +560,29 @@ export const draftService = {
     const response = await apiClient.post(
       `/api/v1/drafts/${draftId}/topics/${topicId}/benchmark-content`,
       { content, subtopic_id: subtopicId }
+    );
+    return response.data;
+  },
+
+  // The benchmark's topics + subtopics (titles + has_content), for the Review-tab match picker.
+  async getBenchmarkUnits(
+    draftId: string
+  ): Promise<{ units: { name: string; level: 'topic' | 'subtopic'; parent: string | null; has_content: boolean }[] }> {
+    const response = await apiClient.get(`/api/v1/drafts/${draftId}/benchmark-units`);
+    return response.data;
+  },
+
+  // Pin (or clear, when matchName is empty) the benchmark section a section is tested against.
+  // A pin overrides auto-matching; re-run reviewBenchmark to assess against it.
+  async setBenchmarkMatch(
+    draftId: string,
+    topicId: string,
+    matchName: string,
+    subtopicId?: string
+  ): Promise<{ topic_id: string; subtopic_id: string | null; manual_benchmark_match: string | null; message: string }> {
+    const response = await apiClient.post(
+      `/api/v1/drafts/${draftId}/topics/${topicId}/benchmark-match`,
+      { match_name: matchName, subtopic_id: subtopicId }
     );
     return response.data;
   },

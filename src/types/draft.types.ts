@@ -24,6 +24,9 @@ export interface TOCSubtopic {
   baseline_content?: string;
   review_step?: 'pending' | 'benchmark' | 'regulation' | 'review' | 'closed';
   benchmark_match?: string | null;
+  added_from_benchmark?: boolean;
+  manual_benchmark_content?: string | null;
+  manual_benchmark_match?: string | null;
 }
 
 export interface TOCTopic {
@@ -42,6 +45,8 @@ export interface TOCTopic {
   added_from_benchmark?: boolean;
   benchmark_match?: string | null;
   reconcile_note?: string | null;
+  manual_benchmark_content?: string | null;
+  manual_benchmark_match?: string | null;
 }
 
 export interface DraftMetadata {
